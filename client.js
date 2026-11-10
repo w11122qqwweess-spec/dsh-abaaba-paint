@@ -24,6 +24,15 @@ window.__ModuleLoader__.load({
         'panel.saveFailed': '保存失败：{message}',
         'panel.unbound': '首次落笔后绑定工作区',
         'panel.noSession': '请先选择一个会话',
+        'panel.handoff': '交接',
+        'panel.handoffTitle': '交接作品',
+        'panel.handoffEmpty': '工作区还没有交接作品',
+        'panel.handoffLoading': '读取交接列表…',
+        'panel.handoffImport': '导入并替换',
+        'panel.handoffConfirm': '导入会替换当前画布，继续？',
+        'panel.handoffFailed': '交接列表失败：{message}',
+        'panel.handoffSource': '来自 {source}',
+        'panel.handoffMeta': '{width}×{height} · {count} 图元',
         'panel.refresh': '刷新',
         'panel.revision': '第 {revision} 版',
         'panel.elements': '{count} 个图元',
@@ -53,6 +62,15 @@ window.__ModuleLoader__.load({
         'panel.saveFailed': 'Save failed: {message}',
         'panel.unbound': 'Workspace binds on first stroke',
         'panel.noSession': 'Select a session first',
+        'panel.handoff': 'Handoff',
+        'panel.handoffTitle': 'Handoff inbox',
+        'panel.handoffEmpty': 'No handoff artifacts in this workspace yet',
+        'panel.handoffLoading': 'Loading handoff inbox…',
+        'panel.handoffImport': 'Import & replace',
+        'panel.handoffConfirm': 'Importing replaces the current canvas. Continue?',
+        'panel.handoffFailed': 'Handoff inbox failed: {message}',
+        'panel.handoffSource': 'From {source}',
+        'panel.handoffMeta': '{width}×{height} · {count} elements',
         'panel.refresh': 'Refresh',
         'panel.revision': 'Revision {revision}',
         'panel.elements': '{count} elements',
@@ -116,6 +134,21 @@ window.__ModuleLoader__.load({
       }
       .abaaba-persistence { color: var(--dsw-alias-state-success-primary); }
       .abaaba-save-error { color: var(--dsw-alias-state-error-primary); }
+      .abaaba-handoffs {
+        margin: 0 26px 10px; padding: 12px; border: 1px solid var(--dsw-alias-border-l1);
+        border-radius: 10px; background: var(--dsw-alias-bg-layer-1);
+        max-height: 280px; overflow: auto;
+      }
+      .abaaba-handoff-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+      .abaaba-handoff-title { font-size: 12px; font-weight: 650; }
+      .abaaba-handoff-empty, .abaaba-handoff-error { font-size: 12px; color: var(--dsw-alias-label-secondary); padding: 8px 0; }
+      .abaaba-handoff-error { color: var(--dsw-alias-state-error-primary); }
+      .abaaba-handoff-list { display: flex; flex-direction: column; gap: 8px; }
+      .abaaba-handoff-card { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; }
+      .abaaba-handoff-thumb { width: 96px; height: 64px; object-fit: cover; border-radius: 6px; background: #070b14; flex: none; }
+      .abaaba-handoff-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+      .abaaba-handoff-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .abaaba-handoff-meta { font-size: 11px; color: var(--dsw-alias-label-secondary); }
       .abaaba-alert {
         margin: 0 26px 10px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
         color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-bg-layer-1);
@@ -126,7 +159,22 @@ window.__ModuleLoader__.load({
         .abaaba-toolbar { justify-content: flex-start; }
         .abaaba-stage { padding: 12px 16px; }
         .abaaba-footer { padding: 0 16px 12px; }
-        .abaaba-alert { margin: 0 16px 10px; }
+        .abaaba-handoffs {
+        margin: 0 26px 10px; padding: 12px; border: 1px solid var(--dsw-alias-border-l1);
+        border-radius: 10px; background: var(--dsw-alias-bg-layer-1);
+        max-height: 280px; overflow: auto;
+      }
+      .abaaba-handoff-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+      .abaaba-handoff-title { font-size: 12px; font-weight: 650; }
+      .abaaba-handoff-empty, .abaaba-handoff-error { font-size: 12px; color: var(--dsw-alias-label-secondary); padding: 8px 0; }
+      .abaaba-handoff-error { color: var(--dsw-alias-state-error-primary); }
+      .abaaba-handoff-list { display: flex; flex-direction: column; gap: 8px; }
+      .abaaba-handoff-card { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; }
+      .abaaba-handoff-thumb { width: 96px; height: 64px; object-fit: cover; border-radius: 6px; background: #070b14; flex: none; }
+      .abaaba-handoff-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+      .abaaba-handoff-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .abaaba-handoff-meta { font-size: 11px; color: var(--dsw-alias-label-secondary); }
+      .abaaba-alert { margin: 0 16px 10px; }
       }
     `;
 
@@ -300,6 +348,9 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('');
       const [busy, setBusy] = useState(false);
       const [online, setOnline] = useState(true);
+      const [showHandoffs, setShowHandoffs] = useState(false);
+      const [handoffs, setHandoffs] = useState(null);
+      const [handoffError, setHandoffError] = useState('');
       const etagRef = useRef(null);
       const requestSeqRef = useRef(0);
 
@@ -339,6 +390,9 @@ window.__ModuleLoader__.load({
         setState(null);
         etagRef.current = null;
         setError('');
+        setShowHandoffs(false);
+        setHandoffs(null);
+        setHandoffError('');
       }, [sessionId]);
 
       useEffect(() => {
@@ -355,7 +409,7 @@ window.__ModuleLoader__.load({
         };
       }, [load, sessionId]);
 
-      const runAction = useCallback(async (action) => {
+      const runAction = useCallback(async (action, extra = {}) => {
         if (!state || busy) return;
         setBusy(true);
         setError('');
@@ -366,7 +420,7 @@ window.__ModuleLoader__.load({
               'content-type': 'application/json',
               'x-abaaba-paint': '1',
             },
-            body: JSON.stringify({ action, revision: state.revision, sessionId }),
+            body: JSON.stringify({ action, revision: state.revision, sessionId, ...extra }),
           });
           const data = await response.json().catch(() => null);
           if (response.status === 409 || (data && data.code === 'PAINT_STALE')) {
@@ -405,6 +459,29 @@ window.__ModuleLoader__.load({
         }
       }, [sessionId, state, t]);
 
+      const loadHandoffs = useCallback(async () => {
+        if (!sessionId) return;
+        setHandoffError('');
+        try {
+          const response = await fetch(`api/abaaba-paint/handoffs?sessionId=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data || data.ok !== true) throw new Error((data && data.message) || `HTTP ${response.status}`);
+          setHandoffs(Array.isArray(data.artifacts) ? data.artifacts : []);
+        } catch (handoffLoadError) {
+          setHandoffError(t('panel.handoffFailed', { message: handoffLoadError instanceof Error ? handoffLoadError.message : String(handoffLoadError) }));
+        }
+      }, [sessionId, t]);
+
+      useEffect(() => {
+        if (showHandoffs) void loadHandoffs();
+      }, [loadHandoffs, showHandoffs]);
+
+      const importHandoff = useCallback((artifactId) => {
+        if (!window.confirm(t('panel.handoffConfirm'))) return;
+        setShowHandoffs(false);
+        void runAction('import', { artifactId, replace: true });
+      }, [runAction, t]);
+
       if (!sessionId) {
         return h('div', { className: 'abaaba-panel' },
           h('style', null, CSS),
@@ -440,6 +517,7 @@ window.__ModuleLoader__.load({
               h('span', { className: `abaaba-dot${online ? '' : ' offline'}` }),
               h('span', null, online ? t('status.live') : t('status.offline')),
             ),
+            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => setShowHandoffs((value) => !value), disabled: busy }, t('panel.handoff')),
             h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void load(), disabled: busy }, t('panel.refresh')),
             h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void runAction('undo'), disabled: busy }, t('panel.undo')),
             h('button', { type: 'button', className: 'abaaba-btn', onClick: () => { if (window.confirm(t('panel.confirmClear'))) void runAction('clear'); }, disabled: busy || state.count === 0 }, t('panel.clear')),
@@ -448,6 +526,30 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'abaaba-btn primary', onClick: () => void saveSvg(), disabled: busy }, t('panel.save')),
           ),
         ),
+        showHandoffs ? h('div', { className: 'abaaba-handoffs' },
+          h('div', { className: 'abaaba-handoff-head' },
+            h('strong', { className: 'abaaba-handoff-title' }, t('panel.handoffTitle')),
+            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => setShowHandoffs(false) }, t('panel.handoff')),
+          ),
+          handoffError ? h('div', { className: 'abaaba-handoff-error', role: 'alert' }, handoffError) : null,
+          handoffs === null && !handoffError ? h('div', { className: 'abaaba-handoff-empty' }, t('panel.handoffLoading')) : null,
+          handoffs !== null && handoffs.length === 0 ? h('div', { className: 'abaaba-handoff-empty' }, t('panel.handoffEmpty')) : null,
+          handoffs !== null && handoffs.length > 0 ? h('div', { className: 'abaaba-handoff-list' },
+            handoffs.map((item) => h('div', { className: 'abaaba-handoff-card', key: item.artifactId },
+              h('img', {
+                className: 'abaaba-handoff-thumb',
+                src: `api/abaaba-paint/handoff.svg?sessionId=${encodeURIComponent(sessionId)}&artifactId=${encodeURIComponent(item.artifactId)}`,
+                alt: item.title,
+              }),
+              h('div', { className: 'abaaba-handoff-copy' },
+                h('span', { className: 'abaaba-handoff-name', title: item.title }, item.title),
+                h('span', { className: 'abaaba-handoff-meta' }, t('panel.handoffMeta', { width: item.width, height: item.height, count: item.count })),
+                h('span', { className: 'abaaba-handoff-meta' }, t('panel.handoffSource', { source: item.source && (item.source.name || item.source.agentId) || '—' })),
+              ),
+              h('button', { type: 'button', className: 'abaaba-btn primary', onClick: () => importHandoff(item.artifactId) }, t('panel.handoffImport')),
+            )),
+          ) : null,
+        ) : null,
         error ? h('div', { className: 'abaaba-alert', role: 'alert' }, error) : null,
         h('div', { className: 'abaaba-stage' }, h(Canvas, { state, t })),
         h('footer', { className: 'abaaba-footer' },

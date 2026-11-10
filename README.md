@@ -65,6 +65,9 @@ plugin_manager install_bundle
 | `paint_export` | 导出 SVG 到 Session 工作区，路径必须相对且以 `.svg` 结尾 |
 | `paint_save` | 手动保存当前画布到工作区（正常操作会自动保存） |
 | `paint_load` | 从本 Session 的工作区快照重新载入画布 |
+| `paint_handoff` | 把当前 Session 的作品发布为工作区交接 artifact |
+| `paint_handoff_list` | 列出工作区里的交接作品 |
+| `paint_handoff_import` | 把交接作品导入当前 Session 画布（非空需 `replace:true`） |
 
 ### 推荐工作流
 
@@ -82,6 +85,17 @@ paint_export  path="exports/night-studio.svg"
 - `abaaba-paint-<sessionId>.svg`：该 Session 可直接预览的当前画面
 
 两者都位于 Session 工作目录根部，**不同 Session 各自独立**。插件重载或 DSH 重启后，每个 Session 的下一次工具调用会读取自己的快照；画布面板按当前 Session 显示，不会串画。
+
+### 跨会话交接
+
+子 agent 的画布与主会话独立。需要交付时：
+
+```text
+子 Session: paint_handoff
+主 Session: paint_handoff_list → paint_handoff_import
+```
+
+交接文件固定为 `abaaba-paint-handoff-<artifactId>.json`，只保存规范化的画布文档；预览 SVG 每次由插件重新渲染，不信任文件里的 SVG 标记。主面板的「交接」按钮可以列出、缩略预览并一键导入。
 
 ### 图元词汇
 
@@ -117,7 +131,7 @@ npm run verify
 包含：
 
 - JavaScript 语法检查
-- 29 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、导出
+- 31 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、交接导入、导出
 - 本地 secret/path 扫描
 
 CI 在 `.github/workflows/ci.yml`，使用固定 commit 的 `actions/checkout` 和 `actions/setup-node`。

@@ -8,9 +8,10 @@
  */
 
 import { PaintError, PaintStore } from './lib/engine.js';
-import { createActionHandler, createExportHandler, createStateHandler } from './lib/http.js';
+import { createActionHandler, createExportHandler, createHandoffListHandler, createHandoffSvgHandler, createStateHandler } from './lib/http.js';
 import { exportSvg } from './lib/export.js';
 import { ensureWorkspace, loadWorkspace, saveWorkspace } from './lib/workspace.js';
+import { createArtifact, listArtifacts, readArtifact, writeArtifact } from './lib/handoff.js';
 
 export const name = 'dsh-abaaba-paint';
 export const inject = ['tools', 'connection', 'fs', 'workingDirectory'];
@@ -450,6 +451,125 @@ function registerTools(ctx, stores) {
     { mutating: true, timeoutMs: 15000 },
   ));
 
+  add(tool(
+    'paint_handoff',
+    'Publish this Session canvas as a handoff artifact in the workspace so another Session can list and import it. Artifacts contain canonical vector data, not trusted markup.',
+    {
+      name: { type: 'string', description: 'optional short author/version label, at most 120 characters' },
+    },
+    okSchema({
+      artifactId: { type: 'string', required: true },
+      path: { type: 'string', required: true },
+      bytes: { type: 'integer', required: true },
+      title: { type: 'string', required: true },
+      count: { type: 'integer', required: true },
+      revision: { type: 'integer', required: true },
+    }),
+    async (args, exec) => {
+      const store = storeFor(stores, exec);
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      const artifact = createArtifact(store, { agentId: exec.agent.id, name: args.name });
+      const written = await writeArtifact(ctx, store, artifact);
+      return {
+        ok: true,
+        artifactId: artifact.artifactId,
+        path: written.path,
+        bytes: written.bytes,
+        title: store.title,
+        count: store.elements.length,
+        revision: store.revision,
+        workspace: store.workspace?.cwd ?? '',
+        savedAt: store.savedAt,
+        saveError: store.saveError,
+        persisted: Boolean(store.workspace && store.savedAt),
+      };
+    },
+    { timeoutMs: 15000 },
+  ));
+
+  add(tool(
+    'paint_handoff_list',
+    'List handoff artifacts published in this workspace by any Session, newest first. Use paint_handoff_import to accept one.',
+    {},
+    {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        ok: { type: 'boolean', required: true },
+        workspace: { type: 'string', required: true },
+        artifacts: {
+          type: 'array',
+          required: true,
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              artifactId: { type: 'string', required: true },
+              createdAt: { type: 'integer', required: true },
+              source: {
+                type: 'object',
+                required: true,
+                additionalProperties: false,
+                properties: {
+                  agentId: { type: 'string', required: true },
+                  name: { type: 'string' },
+                },
+              },
+              title: { type: 'string', required: true },
+              width: { type: 'integer', required: true },
+              height: { type: 'integer', required: true },
+              count: { type: 'integer', required: true },
+              revision: { type: 'integer', required: true },
+              path: { type: 'string', required: true },
+            },
+          },
+        },
+      },
+    },
+    async (_args, exec) => {
+      const store = storeFor(stores, exec);
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      const listed = await listArtifacts(ctx, store);
+      return { ok: true, ...listed };
+    },
+    { mutating: true, timeoutMs: 15000 },
+  ));
+
+  add(tool(
+    'paint_handoff_import',
+    'Import a handoff artifact into this Session canvas. Replacing a non-empty canvas requires replace:true. The imported artifact is revalidated and re-rendered; stored SVG markup is never trusted.',
+    {
+      artifactId: { type: 'string', required: true, description: 'artifact id returned by paint_handoff or paint_handoff_list' },
+      replace: { type: 'boolean', description: 'replace the current non-empty canvas (default false)' },
+    },
+    okSchema({
+      imported: { type: 'boolean', required: true },
+      artifactId: { type: 'string', required: true },
+      count: { type: 'integer', required: true },
+      revision: { type: 'integer', required: true },
+      title: { type: 'string', required: true },
+    }),
+    async (args, exec) => {
+      const store = storeFor(stores, exec);
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      if (store.elements.length > 0 && args.replace !== true) {
+        throw new PaintError('current canvas is not empty; pass replace:true to import the handoff');
+      }
+      const artifact = await readArtifact(ctx, store, args.artifactId);
+      store.loadSerialized(JSON.stringify(artifact.canvas));
+      const result = await commit(ctx, store, store.summary());
+      return {
+        ...result,
+        imported: true,
+        artifactId: artifact.artifactId,
+        count: store.elements.length,
+        revision: store.revision,
+        title: store.title,
+      };
+    },
+    { timeoutMs: 15000 },
+  ));
+
   return () => {
     for (const dispose of disposers) dispose();
   };
@@ -468,6 +588,18 @@ function registerRoutes(ctx, stores) {
       methods: ['POST'],
       requestBody: 'buffered',
       fetch: createActionHandler(stores, ctx),
+    }),
+    ctx.connection.fetch.register({
+      path: '/api/abaaba-paint/handoffs',
+      methods: ['GET'],
+      requestBody: 'buffered',
+      fetch: createHandoffListHandler(stores, ctx),
+    }),
+    ctx.connection.fetch.register({
+      path: '/api/abaaba-paint/handoff.svg',
+      methods: ['GET'],
+      requestBody: 'buffered',
+      fetch: createHandoffSvgHandler(stores, ctx),
     }),
     ctx.connection.fetch.register({
       path: '/api/abaaba-paint/export.svg',

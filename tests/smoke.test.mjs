@@ -7,7 +7,8 @@ import path from 'node:path';
 import { apply } from '../index.js';
 import { PaintStore } from '../lib/engine.js';
 import { ensureWorkspace, saveWorkspace } from '../lib/workspace.js';
-import { createActionHandler } from '../lib/http.js';
+import { createActionHandler, createHandoffListHandler, createHandoffSvgHandler } from '../lib/http.js';
+import { createArtifact, writeArtifact } from '../lib/handoff.js';
 
 function makeContext(root) {
   const tools = new Map();
@@ -69,6 +70,14 @@ function makeContext(root) {
           return undefined;
         }
       },
+      async listDir(target) {
+        const entries = await fs.readdir(target.targetKey, { withFileTypes: true });
+        return entries.map((entry) => ({
+          name: entry.name,
+          type: entry.isDirectory() ? 'directory' : entry.isFile() ? 'file' : 'other',
+          target: { targetKey: path.join(target.targetKey, entry.name), displayPath: path.join(target.targetKey, entry.name) },
+        }));
+      },
       async readText(target) {
         return fs.readFile(target.targetKey, 'utf8');
       },
@@ -110,7 +119,7 @@ function assertNoBooleanRequired(value, at = 'schema') {
   for (const [key, child] of Object.entries(value)) assertNoBooleanRequired(child, `${at}.${key}`);
 }
 
-test('registers eight tools and three authenticated routes', async () => {
+test('registers eleven tools and five authenticated routes', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-smoke-'));
   const { tools, routes } = makeContext(root);
   assert.deepEqual([...tools.keys()].sort(), [
@@ -118,6 +127,9 @@ test('registers eight tools and three authenticated routes', async () => {
     'paint_create',
     'paint_draw',
     'paint_export',
+    'paint_handoff',
+    'paint_handoff_import',
+    'paint_handoff_list',
     'paint_load',
     'paint_save',
     'paint_state',
@@ -126,6 +138,8 @@ test('registers eight tools and three authenticated routes', async () => {
   assert.deepEqual(routes.map((route) => route.path).sort(), [
     '/api/abaaba-paint/action',
     '/api/abaaba-paint/export.svg',
+    '/api/abaaba-paint/handoff.svg',
+    '/api/abaaba-paint/handoffs',
     '/api/abaaba-paint/state',
   ]);
   for (const tool of tools.values()) {
@@ -305,6 +319,77 @@ test('keeps canvases independent per Session in the same workspace', async () =>
   assert.notEqual(await fs.stat(path.join(root, 'abaaba-paint-session-a.json')).then(() => 'a'), undefined);
   assert.ok((await fs.stat(path.join(root, 'abaaba-paint-session-a.json'))).size > 0);
   assert.ok((await fs.stat(path.join(root, 'abaaba-paint-session-b.json'))).size > 0);
+});
+
+test('hands a canvas from one Session to another as an artifact', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-handoff-'));
+  const { tools } = makeContext(root);
+  const a = { agent: { id: 'session-artist', session: {} } };
+  const b = { agent: { id: 'session-curator', session: {} } };
+  await tools.get('paint_create').execute({ width: 240, height: 160, title: 'handoff source' }, a);
+  await tools.get('paint_draw').execute({ elements: [{ type: 'circle', cx: 120, cy: 80, r: 40, fill: '#4E7A5E' }] }, a);
+  const handoff = await tools.get('paint_handoff').execute({ name: 'artist v1' }, a);
+  assert.equal(handoff.ok, true);
+  assert.ok(handoff.artifactId);
+  assert.ok((await fs.stat(path.join(root, handoff.path))).size > 0);
+
+  const listed = await tools.get('paint_handoff_list').execute({}, b);
+  assert.equal(listed.artifacts.length, 1);
+  assert.equal(listed.artifacts[0].title, 'handoff source');
+  assert.equal(listed.artifacts[0].source.name, 'artist v1');
+
+  const imported = await tools.get('paint_handoff_import').execute({ artifactId: handoff.artifactId }, b);
+  assert.equal(imported.imported, true);
+  assert.equal(imported.count, 1);
+  assert.equal(imported.title, 'handoff source');
+  const bState = await tools.get('paint_state').execute({}, b);
+  assert.equal(bState.count, 1);
+  const aState = await tools.get('paint_state').execute({}, a);
+  assert.equal(aState.count, 1, 'source Session must keep its canvas');
+
+  const artifact = JSON.parse(await fs.readFile(path.join(root, handoff.path), 'utf8'));
+  assert.equal(artifact.format, 'dsh-abaaba-paint-handoff');
+  assert.equal(artifact.svg, undefined, 'artifact must not store trusted markup');
+});
+
+test('serves the handoff inbox and imports an artifact over HTTP', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-handoff-http-'));
+  const { ctx } = makeContext(root);
+  const artist = new PaintStore();
+  const artistExec = { agent: { id: 'session-artist', session: {} } };
+  await ensureWorkspace(ctx, artist, artistExec, { reset: true });
+  artist.create({ width: 240, height: 160, title: 'http handoff' });
+  artist.draw([{ type: 'circle', cx: 120, cy: 80, r: 40, fill: '#4E7A5E' }]);
+  const artifact = createArtifact(artist, { agentId: 'session-artist', name: 'http' });
+  await writeArtifact(ctx, artist, artifact);
+
+  const curator = new PaintStore();
+  const curatorExec = { agent: { id: 'session-curator', session: {} } };
+  await ensureWorkspace(ctx, curator, curatorExec, { reset: true });
+  const stores = new Map([['session-artist', artist], ['session-curator', curator]]);
+
+  const listed = await createHandoffListHandler(stores, ctx)(new Request('http://127.0.0.1:50833/api/abaaba-paint/handoffs?sessionId=session-curator'));
+  assert.equal(listed.status, 200);
+  assert.equal((await listed.json()).artifacts.length, 1);
+
+  const preview = await createHandoffSvgHandler(stores, ctx)(new Request(`http://127.0.0.1:50833/api/abaaba-paint/handoff.svg?sessionId=session-curator&artifactId=${encodeURIComponent(artifact.artifactId)}`));
+  assert.equal(preview.status, 200);
+  assert.match(preview.headers.get('content-type'), /image\/svg\+xml/);
+
+  const action = createActionHandler(stores, ctx);
+  const request = new Request('http://127.0.0.1:50833/api/abaaba-paint/action', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-abaaba-paint': '1',
+      origin: 'http://127.0.0.1:50833',
+    },
+    body: JSON.stringify({ action: 'import', artifactId: artifact.artifactId, replace: true, revision: curator.revision, sessionId: 'session-curator' }),
+  });
+  const imported = await action(request);
+  assert.equal(imported.status, 200);
+  assert.equal((await imported.json()).imported, true);
+  assert.equal(curator.snapshot().count, 1);
 });
 
 test('HTTP save and reload operate on the same workspace snapshot', async () => {
