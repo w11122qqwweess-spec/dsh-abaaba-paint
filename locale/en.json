@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Abaaba Paint",
+    "description": "A live vector canvas for DSH agents, with undo, clear, and self-contained SVG export."
+  }
+}

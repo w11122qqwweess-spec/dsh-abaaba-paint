@@ -1,0 +1,72 @@
+{
+  "name": "dsh-abaaba-paint",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A live vector paint studio for DSH agents: six model-facing tools, an authenticated canvas panel, SVG export, and a strict no-dependency drawing engine.",
+  "type": "module",
+  "main": "index.js",
+  "icon": "icon.svg",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.3 <0.3.0"
+  },
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --check lib/engine.js && node --check lib/http.js && node --check lib/export.js",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "npm run check && npm test && npm run secret-scan",
+    "secret-scan": "node scripts/secret-scan.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "paint",
+    "svg",
+    "canvas",
+    "agent"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.2.1-rc.3": "compatible"
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/w11122qqwweess-spec/dsh-abaaba-paint.git"
+  },
+  "homepage": "https://github.com/w11122qqwweess-spec/dsh-abaaba-paint#readme",
+  "bugs": {
+    "url": "https://github.com/w11122qqwweess-spec/dsh-abaaba-paint/issues"
+  }
+}
