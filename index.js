@@ -552,10 +552,14 @@ function registerTools(ctx, stores) {
     async (args, exec) => {
       const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
+      const expectedRevision = store.revision;
+      const artifact = await readArtifact(ctx, store, args.artifactId);
+      if (store.revision !== expectedRevision) {
+        throw new PaintError('canvas changed while reading the handoff; retry the import');
+      }
       if (store.elements.length > 0 && args.replace !== true) {
         throw new PaintError('current canvas is not empty; pass replace:true to import the handoff');
       }
-      const artifact = await readArtifact(ctx, store, args.artifactId);
       store.loadSerialized(JSON.stringify(artifact.canvas));
       const result = await commit(ctx, store, store.summary());
       return {

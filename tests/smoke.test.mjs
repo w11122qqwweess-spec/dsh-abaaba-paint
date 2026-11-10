@@ -392,6 +392,40 @@ test('serves the handoff inbox and imports an artifact over HTTP', async () => {
   assert.equal(curator.snapshot().count, 1);
 });
 
+test('rejects a handoff import if the canvas changes while the artifact is read', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-handoff-race-'));
+  const { ctx } = makeContext(root);
+  const artist = new PaintStore();
+  await ensureWorkspace(ctx, artist, { agent: { id: 'session-artist', session: {} } }, { reset: true });
+  artist.create({ width: 240, height: 160, title: 'race' });
+  artist.draw([{ type: 'circle', cx: 20, cy: 20, r: 5, fill: '#fff' }]);
+  const artifact = createArtifact(artist, { agentId: 'session-artist' });
+  await writeArtifact(ctx, artist, artifact);
+
+  const curator = new PaintStore();
+  await ensureWorkspace(ctx, curator, { agent: { id: 'session-curator', session: {} } }, { reset: true });
+  const originalRead = ctx.fs.readText;
+  ctx.fs.readText = async (target) => {
+    const raw = await originalRead(target);
+    curator.draw([{ type: 'rect', x: 0, y: 0, w: 1, h: 1, fill: '#fff' }]);
+    return raw;
+  };
+  const handler = createActionHandler(new Map([['session-curator', curator]]), ctx);
+  const response = await handler(new Request('http://127.0.0.1:50833/api/abaaba-paint/action', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-abaaba-paint': '1',
+      origin: 'http://127.0.0.1:50833',
+    },
+    body: JSON.stringify({ action: 'import', artifactId: artifact.artifactId, replace: true, revision: curator.revision, sessionId: 'session-curator' }),
+  }));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'PAINT_STALE');
+  assert.equal(curator.snapshot().count, 1);
+  assert.equal(curator.snapshot().title, 'Abaaba 画室');
+});
+
 test('HTTP save and reload operate on the same workspace snapshot', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-http-persist-'));
   const { ctx } = makeContext(root);
