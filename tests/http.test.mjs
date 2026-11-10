@@ -87,7 +87,8 @@ test('routes state and actions by sessionId', async () => {
   const missing = await state(new Request('http://127.0.0.1:50833/api/abaaba-paint/state'));
   assert.equal(missing.status, 400);
   const unknown = await state(new Request('http://127.0.0.1:50833/api/abaaba-paint/state?sessionId=nope'));
-  assert.equal(unknown.status, 404);
+  assert.equal(unknown.status, 200);
+  assert.equal((await unknown.json()).value.count, 0);
 
   const action = createActionHandler(stores);
   const request = new Request('http://127.0.0.1:50833/api/abaaba-paint/action', {
