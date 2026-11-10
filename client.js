@@ -301,15 +301,18 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false);
       const [online, setOnline] = useState(true);
       const etagRef = useRef(null);
+      const requestSeqRef = useRef(0);
 
       const load = useCallback(async () => {
         if (!sessionId) return;
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const seq = ++requestSeqRef.current;
         try {
           const response = await fetch(`api/abaaba-paint/state?sessionId=${encodeURIComponent(sessionId)}`, {
             cache: 'no-store',
             headers: etagRef.current ? { 'if-none-match': etagRef.current } : undefined,
           });
+          if (seq !== requestSeqRef.current) return;
           if (response.status === 304) {
             setOnline(true);
             setError('');
@@ -317,6 +320,7 @@ window.__ModuleLoader__.load({
           }
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
+          if (seq !== requestSeqRef.current) return;
           if (!data || data.ok !== true || !data.value) throw new Error('invalid state');
           const nextEtag = response.headers.get('etag');
           if (nextEtag) etagRef.current = nextEtag;
@@ -324,12 +328,14 @@ window.__ModuleLoader__.load({
           setOnline(true);
           setError('');
         } catch (loadError) {
+          if (seq !== requestSeqRef.current) return;
           setOnline(false);
           setError(t('panel.error', { message: loadError instanceof Error ? loadError.message : String(loadError) }));
         }
       }, [sessionId, t]);
 
       useEffect(() => {
+        requestSeqRef.current += 1;
         setState(null);
         etagRef.current = null;
         setError('');

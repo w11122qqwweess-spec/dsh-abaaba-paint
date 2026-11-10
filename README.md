@@ -97,6 +97,7 @@ paint_export  path="exports/night-studio.svg"
 ## 安全模型
 
 - 三条同源路由全部通过 `ctx.connection.fetch`，未认证请求 401
+- 工具侧以 `exec.agent.id` 绑定画布；HTTP 的 `sessionId` 是同一 owner 内的选择器，不是额外的权限边界
 - `GET /state`、`GET /export.svg` 无副作用；修改只走 `POST /action`
 - POST 要求 `content-type: application/json`、`x-abaaba-paint: 1`、同源 Origin 和匹配的 revision
 - SVG 只由白名单图元和转义文本构成；无 `script`、`foreignObject`、`href`、事件属性、`style`、远程 URL
