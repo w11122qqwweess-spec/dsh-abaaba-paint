@@ -1,0 +1,931 @@
+{
+  "format": "dsh-abaaba-paint",
+  "version": 1,
+  "title": "深夜画室",
+  "width": 1200,
+  "height": 800,
+  "background": "#0E1626",
+  "elements": [
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "nightWall",
+      "kind": "linear",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#1B2A44",
+          "opacity": 1
+        },
+        {
+          "offset": 1,
+          "color": "#0E1626",
+          "opacity": 1
+        }
+      ],
+      "x1": 0,
+      "y1": 0,
+      "x2": 0,
+      "y2": 800
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "skyGrad",
+      "kind": "linear",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#2E4A6B",
+          "opacity": 1
+        },
+        {
+          "offset": 1,
+          "color": "#0E1626",
+          "opacity": 1
+        }
+      ],
+      "x1": 0,
+      "y1": 140,
+      "x2": 0,
+      "y2": 486
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "warmWash",
+      "kind": "radial",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#F2C879",
+          "opacity": 0.16
+        },
+        {
+          "offset": 1,
+          "color": "#F2C879",
+          "opacity": 0
+        }
+      ],
+      "cx": 360,
+      "cy": 420,
+      "r": 300
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "coolWash",
+      "kind": "radial",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#6E93B8",
+          "opacity": 0.1
+        },
+        {
+          "offset": 1,
+          "color": "#6E93B8",
+          "opacity": 0
+        }
+      ],
+      "cx": 960,
+      "cy": 470,
+      "r": 260
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "shadeGrad",
+      "kind": "linear",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#E8A757",
+          "opacity": 1
+        },
+        {
+          "offset": 1,
+          "color": "#C9803F",
+          "opacity": 1
+        }
+      ],
+      "x1": 0,
+      "y1": 358,
+      "x2": 0,
+      "y2": 430
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "coneGrad",
+      "kind": "linear",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#F2C879",
+          "opacity": 0.3
+        },
+        {
+          "offset": 1,
+          "color": "#F2C879",
+          "opacity": 0
+        }
+      ],
+      "x1": 0,
+      "y1": 430,
+      "x2": 0,
+      "y2": 660
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "poolGrad",
+      "kind": "radial",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#F2C879",
+          "opacity": 0.26
+        },
+        {
+          "offset": 1,
+          "color": "#F2C879",
+          "opacity": 0
+        }
+      ],
+      "cx": 372,
+      "cy": 650,
+      "r": 286
+    },
+    {
+      "type": "gradient",
+      "opacity": 1,
+      "id": "vignette",
+      "kind": "linear",
+      "stops": [
+        {
+          "offset": 0,
+          "color": "#0E1626",
+          "opacity": 0
+        },
+        {
+          "offset": 1,
+          "color": "#0E1626",
+          "opacity": 0.28
+        }
+      ],
+      "x1": 0,
+      "y1": 690,
+      "x2": 0,
+      "y2": 800
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "url(#nightWall)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 800,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "url(#skyGrad)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 700,
+      "y": 140,
+      "w": 410,
+      "h": 350,
+      "rx": 0
+    },
+    {
+      "type": "circle",
+      "opacity": 0.92,
+      "fill": "#F7F2E8",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 1042,
+      "cy": 208,
+      "r": 26
+    },
+    {
+      "type": "circle",
+      "opacity": 0.08,
+      "fill": "#F7F2E8",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 1042,
+      "cy": 208,
+      "r": 44
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "#1B2A44",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 706,
+      "y": 392,
+      "w": 58,
+      "h": 94,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "#1B2A44",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 772,
+      "y": 346,
+      "w": 44,
+      "h": 140,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "#1B2A44",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 824,
+      "y": 406,
+      "w": 70,
+      "h": 80,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.55,
+      "fill": "#0E1626",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 900,
+      "y": 324,
+      "w": 52,
+      "h": 162,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "#1B2A44",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 958,
+      "y": 370,
+      "w": 40,
+      "h": 116,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "#1B2A44",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 1004,
+      "y": 338,
+      "w": 64,
+      "h": 148,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.55,
+      "fill": "#0E1626",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 1072,
+      "y": 398,
+      "w": 38,
+      "h": 88,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.06,
+      "fill": "#6E93B8",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 700,
+      "y": 140,
+      "w": 410,
+      "h": 350,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 6,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 700,
+      "y": 140,
+      "w": 410,
+      "h": 350,
+      "rx": 0
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 905,
+      "y1": 140,
+      "x2": 905,
+      "y2": 490
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 700,
+      "y1": 315,
+      "x2": 1110,
+      "y2": 315
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#7A4A2E",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "684,494 1126,494 1132,516 678,516"
+    },
+    {
+      "type": "rect",
+      "opacity": 0.25,
+      "fill": "#0E1626",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 700,
+      "y": 462,
+      "w": 410,
+      "h": 28,
+      "rx": 0
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "url(#warmWash)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 360,
+      "cy": 420,
+      "rx": 300,
+      "ry": 260
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "url(#coolWash)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 960,
+      "cy": 470,
+      "rx": 260,
+      "ry": 220
+    },
+    {
+      "type": "rect",
+      "opacity": 0.85,
+      "fill": "#F2C879",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 720,
+      "y": 410,
+      "w": 8,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.85,
+      "fill": "#F2C879",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 788,
+      "y": 368,
+      "w": 8,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.8,
+      "fill": "#A9C4D6",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 920,
+      "y": 350,
+      "w": 10,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.85,
+      "fill": "#F2C879",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 972,
+      "y": 400,
+      "w": 8,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.8,
+      "fill": "#A9C4D6",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 1022,
+      "y": 362,
+      "w": 10,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "rect",
+      "opacity": 0.85,
+      "fill": "#F2C879",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 1086,
+      "y": 420,
+      "w": 8,
+      "h": 5,
+      "rx": 0
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#7A4A2E",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "70,556 1160,556 1146,662 96,662"
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#5A3620",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "96,656 1146,656 1146,686 96,686"
+    },
+    {
+      "type": "line",
+      "opacity": 0.18,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 150,
+      "y1": 590,
+      "x2": 1080,
+      "y2": 590
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#D96C4F",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "1058,648 1122,648 1114,712 1066,712"
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "#C9803F",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 1090,
+      "cy": 648,
+      "rx": 32,
+      "ry": 7
+    },
+    {
+      "type": "path",
+      "opacity": 1,
+      "fill": "#4E7A5E",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M1090,646 C1058,608 1038,566 1046,522 C1072,558 1090,602 1094,646 Z"
+    },
+    {
+      "type": "path",
+      "opacity": 0.85,
+      "fill": "#3A5C46",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M1092,646 C1092,594 1096,548 1120,512 C1122,560 1114,606 1100,648 Z"
+    },
+    {
+      "type": "path",
+      "opacity": 1,
+      "fill": "#4E7A5E",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M1088,646 C1060,614 1024,596 998,590 C1026,616 1058,636 1082,650 Z"
+    },
+    {
+      "type": "path",
+      "opacity": 0.9,
+      "fill": "#4E7A5E",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M1092,646 C1116,616 1138,602 1152,600 C1134,624 1112,638 1100,650 Z"
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "#3A2A22",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 250,
+      "cy": 600,
+      "rx": 48,
+      "ry": 11
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 6,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 250,
+      "y1": 594,
+      "x2": 250,
+      "y2": 430
+    },
+    {
+      "type": "circle",
+      "opacity": 1,
+      "fill": "#C9803F",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 250,
+      "cy": 430,
+      "r": 7
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "url(#shadeGrad)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "206,358 294,358 334,430 166,430"
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 3,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 166,
+      "y1": 430,
+      "x2": 334,
+      "y2": 430
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "url(#coneGrad)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "170,430 330,430 586,660 112,660"
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "url(#poolGrad)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 372,
+      "cy": 650,
+      "rx": 286,
+      "ry": 60
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#F6E3C4",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "436,606 584,588 584,646 436,664"
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#F7F2E8",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "588,588 736,606 736,664 588,646"
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#7A4A2E",
+      "strokeWidth": 2,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 586,
+      "y1": 588,
+      "x2": 586,
+      "y2": 646
+    },
+    {
+      "type": "circle",
+      "opacity": 0.35,
+      "fill": "none",
+      "stroke": "#3A2A22",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 492,
+      "cy": 628,
+      "r": 20
+    },
+    {
+      "type": "line",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#2A2320",
+      "strokeWidth": 5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x1": 668,
+      "y1": 656,
+      "x2": 742,
+      "y2": 600
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#A9C4D6",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "738,602 752,594 746,610"
+    },
+    {
+      "type": "polygon",
+      "opacity": 1,
+      "fill": "#D96C4F",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "784,574 840,574 834,630 790,630"
+    },
+    {
+      "type": "ellipse",
+      "opacity": 1,
+      "fill": "#C9803F",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 812,
+      "cy": 574,
+      "rx": 28,
+      "ry": 8
+    },
+    {
+      "type": "path",
+      "opacity": 1,
+      "fill": "none",
+      "stroke": "#C9803F",
+      "strokeWidth": 5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M836,588 C862,586 862,616 836,612"
+    },
+    {
+      "type": "path",
+      "opacity": 0.3,
+      "fill": "none",
+      "stroke": "#F7F2E8",
+      "strokeWidth": 3,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M800,564 C790,536 812,516 800,488 C792,466 804,452 800,436"
+    },
+    {
+      "type": "path",
+      "opacity": 0.22,
+      "fill": "none",
+      "stroke": "#F7F2E8",
+      "strokeWidth": 2.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M812,562 C820,538 802,518 814,492 C822,474 812,458 816,444"
+    },
+    {
+      "type": "path",
+      "opacity": 0.16,
+      "fill": "none",
+      "stroke": "#F7F2E8",
+      "strokeWidth": 2,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "d": "M824,564 C832,540 818,522 828,498 C836,478 824,462 828,448"
+    },
+    {
+      "type": "ellipse",
+      "opacity": 0.22,
+      "fill": "#3A2A22",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 600,
+      "cy": 668,
+      "rx": 178,
+      "ry": 14
+    },
+    {
+      "type": "ellipse",
+      "opacity": 0.25,
+      "fill": "#3A2A22",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 826,
+      "cy": 634,
+      "rx": 44,
+      "ry": 10
+    },
+    {
+      "type": "ellipse",
+      "opacity": 0.3,
+      "fill": "#3A2A22",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "cx": 272,
+      "cy": 610,
+      "rx": 54,
+      "ry": 10
+    },
+    {
+      "type": "rect",
+      "opacity": 1,
+      "fill": "url(#vignette)",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 0,
+      "y": 690,
+      "w": 1200,
+      "h": 110,
+      "rx": 0
+    },
+    {
+      "type": "polygon",
+      "opacity": 0.04,
+      "fill": "#A9C4D6",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "points": "120,200 260,170 300,260 180,300"
+    },
+    {
+      "type": "text",
+      "opacity": 0.88,
+      "fill": "#A9C4D6",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 64,
+      "y": 96,
+      "text": "深夜画室",
+      "size": 30,
+      "anchor": "start",
+      "weight": 400,
+      "font": "serif",
+      "letterSpacing": 6
+    },
+    {
+      "type": "text",
+      "opacity": 0.9,
+      "fill": "#BFD3E2",
+      "stroke": "none",
+      "strokeWidth": 1.5,
+      "strokeLinecap": "round",
+      "strokeLinejoin": "round",
+      "x": 1136,
+      "y": 764,
+      "text": "凌晨两点，灯还亮着。",
+      "size": 15,
+      "anchor": "end",
+      "weight": 400,
+      "font": "serif",
+      "letterSpacing": 2
+    }
+  ],
+  "revision": 4,
+  "updatedAt": 1794282638983
+}

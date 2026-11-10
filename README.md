@@ -4,6 +4,8 @@
 
 ![深夜画室](examples/night-studio.png)
 
+示例的可恢复源文件在 `examples/night-studio.json`；工作区自动保存文件也使用同一格式。
+
 > 示例作品《深夜画室》由插件自身的 `paint_*` 工具绘制：68 个图元，1200×800。
 
 ## 兼容性
