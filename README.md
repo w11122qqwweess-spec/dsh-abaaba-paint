@@ -4,7 +4,7 @@
 
 ![深夜画室](examples/night-studio.png)
 
-示例的可恢复源文件在 `examples/night-studio.json`；工作区自动保存文件也使用同一格式。
+示例的可恢复源文件在 `examples/night-studio.json`；工作区自动保存文件使用同一格式，文件名为 `abaaba-paint-<sessionId>.json`。
 
 > 示例作品《深夜画室》由插件自身的 `paint_*` 工具绘制：68 个图元，1200×800。
 
@@ -64,7 +64,7 @@ plugin_manager install_bundle
 | `paint_state` | 读取尺寸、标题、图元数、类型统计、revision |
 | `paint_export` | 导出 SVG 到 Session 工作区，路径必须相对且以 `.svg` 结尾 |
 | `paint_save` | 手动保存当前画布到工作区（正常操作会自动保存） |
-| `paint_load` | 从工作区 `abaaba-paint.json` 重新载入画布 |
+| `paint_load` | 从本 Session 的工作区快照重新载入画布 |
 
 ### 推荐工作流
 
@@ -78,10 +78,10 @@ paint_export  path="exports/night-studio.svg"
 
 每次 `create` / `draw` / `undo` / `clear` 成功后都会自动写入：
 
-- `abaaba-paint.json`：可恢复的完整画布状态
-- `abaaba-paint.svg`：可直接预览的当前画面
+- `abaaba-paint-<sessionId>.json`：该 Session 可恢复的完整画布状态
+- `abaaba-paint-<sessionId>.svg`：该 Session 可直接预览的当前画面
 
-两者都位于 Session 工作目录根部。插件重载或 DSH 重启后，下一次工具调用会自动读取已有的 `abaaba-paint.json`；画布面板会显示“已保存/保存失败”状态。
+两者都位于 Session 工作目录根部，**不同 Session 各自独立**。插件重载或 DSH 重启后，每个 Session 的下一次工具调用会读取自己的快照；画布面板按当前 Session 显示，不会串画。
 
 ### 图元词汇
 
@@ -116,16 +116,16 @@ npm run verify
 包含：
 
 - JavaScript 语法检查
-- 27 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、导出
+- 29 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、导出
 - 本地 secret/path 扫描
 
 CI 在 `.github/workflows/ci.yml`，使用固定 commit 的 `actions/checkout` 和 `actions/setup-node`。
 
 ## 已知限制
 
-- 自动保存文件固定为工作区根部的 `abaaba-paint.json` / `abaaba-paint.svg`；手动 `paint_export` 的目标父目录必须已存在
+- 自动保存文件为工作区根部的 `abaaba-paint-<sessionId>.json` / `.svg`；手动 `paint_export` 的目标父目录必须已存在
 - 画布状态会在工作区自动保存；历史撤销栈不会持久化，重载后只能从当前快照继续
-- 当前实现是**进程级共享画布**，不是每个 Session 独立画布
+- 每个 Session 独立画布；UI 按当前选中的 Session 显示
 - Host 端只导出 SVG；PNG 由浏览器打开/下载 SVG 后生成
 - 没有多用户协作或服务端鉴权体系，信任 DSH Web 的 owner 会话
 

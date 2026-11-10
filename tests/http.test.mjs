@@ -75,6 +75,36 @@ test('actions reject prototype-pollution shapes and oversized bodies', async () 
   assert.equal(big.status, 413);
 });
 
+test('routes state and actions by sessionId', async () => {
+  const a = store();
+  const b = store();
+  b.draw([{ type: 'circle', cx: 1, cy: 1, r: 1, fill: '#fff' }]);
+  const stores = new Map([['session-a', a], ['session-b', b]]);
+  const state = createStateHandler(stores);
+  const ok = await state(new Request('http://127.0.0.1:50833/api/abaaba-paint/state?sessionId=session-a'));
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).value.count, 1);
+  const missing = await state(new Request('http://127.0.0.1:50833/api/abaaba-paint/state'));
+  assert.equal(missing.status, 400);
+  const unknown = await state(new Request('http://127.0.0.1:50833/api/abaaba-paint/state?sessionId=nope'));
+  assert.equal(unknown.status, 404);
+
+  const action = createActionHandler(stores);
+  const request = new Request('http://127.0.0.1:50833/api/abaaba-paint/action', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-abaaba-paint': '1',
+      origin: 'http://127.0.0.1:50833',
+    },
+    body: JSON.stringify({ action: 'clear', revision: a.revision, sessionId: 'session-a' }),
+  });
+  const cleared = await action(request);
+  assert.equal(cleared.status, 200);
+  assert.equal(a.snapshot().count, 0);
+  assert.equal(b.snapshot().count, 2);
+});
+
 test('export response is SVG with an inert policy', async () => {
   const paint = store();
   const response = await createExportHandler(paint)(new Request('http://127.0.0.1:50833/api/abaaba-paint/export.svg'));

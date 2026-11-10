@@ -212,7 +212,22 @@ async function commit(ctx, store, result) {
   };
 }
 
-function registerTools(ctx, store) {
+function storeFor(stores, exec) {
+  const id = exec.agent?.id;
+  if (typeof id !== 'string' || id.length === 0) throw new PaintError('a paint operation requires an owning Session id');
+  let store = stores.get(id);
+  if (!store) {
+    store = new PaintStore();
+    stores.set(id, store);
+    if (stores.size > 64) {
+      const oldest = stores.keys().next().value;
+      if (oldest !== id) stores.delete(oldest);
+    }
+  }
+  return store;
+}
+
+function registerTools(ctx, stores) {
   const disposers = [];
   const add = (definition) => disposers.push(ctx.tools.register(definition));
 
@@ -234,6 +249,7 @@ function registerTools(ctx, store) {
       revision: { type: 'integer', required: true },
     }),
     async (args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: false, reset: true, replace: Boolean(args.replace) });
       return commit(ctx, store, store.create(args));
     },
@@ -261,6 +277,7 @@ function registerTools(ctx, store) {
       revision: { type: 'integer', required: true },
     }),
     async (args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       return commit(ctx, store, store.draw(args.elements));
     },
@@ -279,6 +296,7 @@ function registerTools(ctx, store) {
       revision: { type: 'integer', required: true },
     }),
     async (args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       return commit(ctx, store, store.undo(args.steps ?? 1));
     },
@@ -295,6 +313,7 @@ function registerTools(ctx, store) {
       revision: { type: 'integer', required: true },
     }),
     async (_args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       return commit(ctx, store, store.clear());
     },
@@ -335,6 +354,7 @@ function registerTools(ctx, store) {
       },
     },
     async (_args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       return store.summary();
     },
@@ -355,6 +375,7 @@ function registerTools(ctx, store) {
       overwritten: { type: 'boolean', required: true },
     }),
     async (args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       return { ok: true, ...(await exportSvg(ctx, exec, store, args)), workspace: store.workspace?.cwd ?? '', savedAt: store.savedAt, saveError: store.saveError, persisted: Boolean(store.workspace && store.savedAt) };
     },
@@ -375,6 +396,7 @@ function registerTools(ctx, store) {
       count: { type: 'integer', required: true },
     }),
     async (_args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: true });
       const save = await saveWorkspace(ctx, store);
       return {
@@ -393,7 +415,7 @@ function registerTools(ctx, store) {
 
   add(tool(
     'paint_load',
-    'Reload the canvas from abaaba-paint.json in the Session working directory. Use paint_create to start over instead of loading.',
+    "Reload this Session's canvas from its abaaba-paint-<sessionId>.json snapshot in the working directory. Use paint_create to start over instead of loading.",
     {},
     {
       type: 'object',
@@ -410,6 +432,7 @@ function registerTools(ctx, store) {
       },
     },
     async (_args, exec) => {
+      const store = storeFor(stores, exec);
       await ensureWorkspace(ctx, store, exec, { load: false });
       store.workspace.loaded = false;
       const loaded = await loadWorkspace(ctx, store);
@@ -432,25 +455,25 @@ function registerTools(ctx, store) {
   };
 }
 
-function registerRoutes(ctx, store) {
+function registerRoutes(ctx, stores) {
   const disposers = [
     ctx.connection.fetch.register({
       path: '/api/abaaba-paint/state',
       methods: ['GET'],
       requestBody: 'buffered',
-      fetch: createStateHandler(store),
+      fetch: createStateHandler(stores),
     }),
     ctx.connection.fetch.register({
       path: '/api/abaaba-paint/action',
       methods: ['POST'],
       requestBody: 'buffered',
-      fetch: createActionHandler(store, ctx),
+      fetch: createActionHandler(stores, ctx),
     }),
     ctx.connection.fetch.register({
       path: '/api/abaaba-paint/export.svg',
       methods: ['GET'],
       requestBody: 'buffered',
-      fetch: createExportHandler(store),
+      fetch: createExportHandler(stores),
     }),
   ];
   return () => {
@@ -459,7 +482,7 @@ function registerRoutes(ctx, store) {
 }
 
 export function apply(ctx) {
-  const store = new PaintStore();
-  ctx.effect(() => registerTools(ctx, store));
-  ctx.effect(() => registerRoutes(ctx, store));
+  const stores = new Map();
+  ctx.effect(() => registerTools(ctx, stores));
+  ctx.effect(() => registerRoutes(ctx, stores));
 }

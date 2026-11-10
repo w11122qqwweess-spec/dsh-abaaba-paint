@@ -23,6 +23,7 @@ window.__ModuleLoader__.load({
         'panel.savedAt': '已保存到工作区 · {time}',
         'panel.saveFailed': '保存失败：{message}',
         'panel.unbound': '首次落笔后绑定工作区',
+        'panel.noSession': '请先选择一个会话',
         'panel.refresh': '刷新',
         'panel.revision': '第 {revision} 版',
         'panel.elements': '{count} 个图元',
@@ -51,6 +52,7 @@ window.__ModuleLoader__.load({
         'panel.savedAt': 'Saved to workspace · {time}',
         'panel.saveFailed': 'Save failed: {message}',
         'panel.unbound': 'Workspace binds on first stroke',
+        'panel.noSession': 'Select a session first',
         'panel.refresh': 'Refresh',
         'panel.revision': 'Revision {revision}',
         'panel.elements': '{count} elements',
@@ -282,7 +284,17 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function PaintPanel({ ctx }) {
+    function PaintPanelSession(props) {
+      if (typeof props.useSessions !== 'function') return h(PaintPanel, { ...props, sessionId: null });
+      return h(PaintPanelBound, props);
+    }
+
+    function PaintPanelBound({ useSessions, ...props }) {
+      const snapshot = useSessions((value) => value);
+      return h(PaintPanel, { ...props, sessionId: snapshot?.current ?? null });
+    }
+
+    function PaintPanel({ ctx, sessionId }) {
       const t = useMemo(() => tFactory(ctx), [ctx]);
       const [state, setState] = useState(null);
       const [error, setError] = useState('');
@@ -291,9 +303,10 @@ window.__ModuleLoader__.load({
       const etagRef = useRef(null);
 
       const load = useCallback(async () => {
+        if (!sessionId) return;
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
         try {
-          const response = await fetch('api/abaaba-paint/state', {
+          const response = await fetch(`api/abaaba-paint/state?sessionId=${encodeURIComponent(sessionId)}`, {
             cache: 'no-store',
             headers: etagRef.current ? { 'if-none-match': etagRef.current } : undefined,
           });
@@ -314,9 +327,16 @@ window.__ModuleLoader__.load({
           setOnline(false);
           setError(t('panel.error', { message: loadError instanceof Error ? loadError.message : String(loadError) }));
         }
-      }, [t]);
+      }, [sessionId, t]);
 
       useEffect(() => {
+        setState(null);
+        etagRef.current = null;
+        setError('');
+      }, [sessionId]);
+
+      useEffect(() => {
+        if (!sessionId) return undefined;
         let alive = true;
         const tick = () => {
           if (alive) void load();
@@ -327,7 +347,7 @@ window.__ModuleLoader__.load({
           alive = false;
           clearInterval(timer);
         };
-      }, [load]);
+      }, [load, sessionId]);
 
       const runAction = useCallback(async (action) => {
         if (!state || busy) return;
@@ -340,7 +360,7 @@ window.__ModuleLoader__.load({
               'content-type': 'application/json',
               'x-abaaba-paint': '1',
             },
-            body: JSON.stringify({ action, revision: state.revision }),
+            body: JSON.stringify({ action, revision: state.revision, sessionId }),
           });
           const data = await response.json().catch(() => null);
           if (response.status === 409 || (data && data.code === 'PAINT_STALE')) {
@@ -357,11 +377,11 @@ window.__ModuleLoader__.load({
         } finally {
           setBusy(false);
         }
-      }, [busy, load, state, t]);
+      }, [busy, load, sessionId, state, t]);
 
       const saveSvg = useCallback(async () => {
         try {
-          const response = await fetch('api/abaaba-paint/export.svg', { cache: 'no-store' });
+          const response = await fetch(`api/abaaba-paint/export.svg?sessionId=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
@@ -377,7 +397,14 @@ window.__ModuleLoader__.load({
         } catch (saveError) {
           setError(t('panel.error', { message: saveError instanceof Error ? saveError.message : String(saveError) }));
         }
-      }, [state, t]);
+      }, [sessionId, state, t]);
+
+      if (!sessionId) {
+        return h('div', { className: 'abaaba-panel' },
+          h('style', null, CSS),
+          h('div', { className: 'abaaba-stage' }, h('span', { className: 'abaaba-subtitle' }, t('panel.noSession'))),
+        );
+      }
 
       if (!state) {
         return h('div', { className: 'abaaba-panel' },
@@ -447,7 +474,7 @@ window.__ModuleLoader__.load({
         ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main',
           key: 'abaaba-paint',
-        }, (props) => h(PaintPanel, { ...props, ctx }))));
+        }, (props) => h(PaintPanelSession, { ...props, ctx }))));
       },
     };
   },

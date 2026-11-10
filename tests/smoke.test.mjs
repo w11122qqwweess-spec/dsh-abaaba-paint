@@ -139,7 +139,7 @@ test('creates, draws, inspects, undoes, and exports a real SVG', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-smoke-'));
   await fs.mkdir(path.join(root, 'art'));
   const { tools, policyRef } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
 
   const created = await tools.get('paint_create').execute(
     { width: 640, height: 400, background: '#0E1626', title: 'smoke' },
@@ -194,7 +194,7 @@ test('creates, draws, inspects, undoes, and exports a real SVG', async () => {
 test('requires replace:true before overwriting an existing workspace canvas', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-replace-'));
   const { tools } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await tools.get('paint_create').execute({ width: 320, height: 200, title: 'first' }, exec);
   await assert.rejects(
     () => tools.get('paint_create').execute({ width: 320, height: 200, title: 'second' }, exec),
@@ -208,14 +208,14 @@ test('requires replace:true before overwriting an existing workspace canvas', as
 test('auto-saves and reloads the canvas from the workspace', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-persist-'));
   const { tools } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await tools.get('paint_create').execute({ width: 320, height: 200, title: 'persisted' }, exec);
   await tools.get('paint_draw').execute({
     elements: [{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }],
   }, exec);
 
-  const stateFile = path.join(root, 'abaaba-paint.json');
-  const svgFile = path.join(root, 'abaaba-paint.svg');
+  const stateFile = path.join(root, 'abaaba-paint-session-test.json');
+  const svgFile = path.join(root, 'abaaba-paint-session-test.svg');
   assert.ok((await fs.stat(stateFile)).size > 0);
   assert.ok((await fs.stat(svgFile)).size > 0);
   const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
@@ -241,17 +241,17 @@ test('auto-saves and reloads the canvas from the workspace', async () => {
 
 test('rejects an oversized workspace snapshot before reading it', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-huge-'));
-  await fs.writeFile(path.join(root, 'abaaba-paint.json'), Buffer.alloc(4 * 1024 * 1024, 'a'));
+  await fs.writeFile(path.join(root, 'abaaba-paint-session-test.json'), Buffer.alloc(4 * 1024 * 1024, 'a'));
   const { tools } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await assert.rejects(() => tools.get('paint_load').execute({}, exec), /too large/);
 });
 
 test('rejects a corrupted workspace snapshot before mutating', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-corrupt-'));
-  await fs.writeFile(path.join(root, 'abaaba-paint.json'), '{"format":"wrong"}', 'utf8');
+  await fs.writeFile(path.join(root, 'abaaba-paint-session-test.json'), '{"format":"wrong"}', 'utf8');
   const { tools } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await assert.rejects(
     () => tools.get('paint_load').execute({}, exec),
     /unsupported format|invalid|format/i,
@@ -267,7 +267,7 @@ test('switching workspaces does not leak one canvas into another', async () => {
   const rootB = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-ws-b-'));
   const { ctx } = makeContext(rootA);
   const store = new PaintStore();
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await ensureWorkspace(ctx, store, exec, { reset: true });
   store.create({ width: 320, height: 200, title: 'A' });
   store.draw([{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }]);
@@ -287,11 +287,31 @@ test('switching workspaces does not leak one canvas into another', async () => {
   assert.equal(store.snapshot().count, 1);
 });
 
+test('keeps canvases independent per Session in the same workspace', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-sessions-'));
+  const { tools } = makeContext(root);
+  const a = { agent: { id: 'session-a', session: {} } };
+  const b = { agent: { id: 'session-b', session: {} } };
+  await tools.get('paint_create').execute({ width: 320, height: 200, title: 'A' }, a);
+  await tools.get('paint_draw').execute({ elements: [{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }] }, a);
+  await tools.get('paint_create').execute({ width: 640, height: 400, title: 'B' }, b);
+  await tools.get('paint_draw').execute({ elements: [{ type: 'circle', cx: 20, cy: 20, r: 5, fill: '#fff' }] }, b);
+  const stateA = await tools.get('paint_state').execute({}, a);
+  const stateB = await tools.get('paint_state').execute({}, b);
+  assert.equal(stateA.title, 'A');
+  assert.equal(stateA.count, 1);
+  assert.equal(stateB.title, 'B');
+  assert.equal(stateB.count, 1);
+  assert.notEqual(await fs.stat(path.join(root, 'abaaba-paint-session-a.json')).then(() => 'a'), undefined);
+  assert.ok((await fs.stat(path.join(root, 'abaaba-paint-session-a.json'))).size > 0);
+  assert.ok((await fs.stat(path.join(root, 'abaaba-paint-session-b.json'))).size > 0);
+});
+
 test('HTTP save and reload operate on the same workspace snapshot', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-http-persist-'));
   const { ctx } = makeContext(root);
   const store = new PaintStore();
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   await ensureWorkspace(ctx, store, exec, { reset: true });
   store.create({ width: 320, height: 200, title: 'http persisted' });
   store.draw([{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }]);
@@ -323,7 +343,7 @@ test('HTTP save and reload operate on the same workspace snapshot', async () => 
 test('rejects traversal, absolute paths, reserved names, and symlinked exports', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-smoke-'));
   const { tools } = makeContext(root);
-  const exec = { agent: { session: {} } };
+  const exec = { agent: { id: 'session-test', session: {} } };
   for (const bad of ['../evil.svg', 'C:\\Windows\\evil.svg', 'art/a.svg:evil', 'CON.svg', 'art/name.svg.']) {
     await assert.rejects(() => tools.get('paint_export').execute({ path: bad }, exec), /path|relative|reserved|dot|stream/i);
   }
