@@ -25,6 +25,12 @@ window.__ModuleLoader__.load({
         'panel.unbound': '首次落笔后绑定工作区',
         'panel.noSession': '请先选择一个会话',
         'panel.handoff': '交接',
+        'panel.fit': '适应',
+        'panel.zoomIn': '放大',
+        'panel.zoomOut': '缩小',
+        'panel.zoom100': '100%',
+        'panel.full': '全屏',
+        'panel.exitFull': '退出全屏',
         'panel.handoffTitle': '交接作品',
         'panel.handoffEmpty': '工作区还没有交接作品',
         'panel.handoffLoading': '读取交接列表…',
@@ -63,6 +69,12 @@ window.__ModuleLoader__.load({
         'panel.unbound': 'Workspace binds on first stroke',
         'panel.noSession': 'Select a session first',
         'panel.handoff': 'Handoff',
+        'panel.fit': 'Fit',
+        'panel.zoomIn': 'Zoom in',
+        'panel.zoomOut': 'Zoom out',
+        'panel.zoom100': '100%',
+        'panel.full': 'Fullscreen',
+        'panel.exitFull': 'Exit fullscreen',
         'panel.handoffTitle': 'Handoff inbox',
         'panel.handoffEmpty': 'No handoff artifacts in this workspace yet',
         'panel.handoffLoading': 'Loading handoff inbox…',
@@ -113,7 +125,29 @@ window.__ModuleLoader__.load({
       .abaaba-meta { display: flex; align-items: center; gap: 10px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
       .abaaba-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-success-primary); }
       .abaaba-dot.offline { background: var(--dsw-alias-state-error-primary); }
-      .abaaba-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 18px 26px; }
+      .abaaba-stage { flex: 1; min-height: 0; display: flex; align-items: stretch; justify-content: stretch; padding: 18px 26px; }
+      .abaaba-viewport {
+        position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: 14px;
+        border: 1px solid var(--dsw-alias-border-l1); background: #070b14;
+        box-shadow: 0 18px 55px rgba(0, 0, 0, .28); cursor: grab; touch-action: none; overscroll-behavior: contain;
+      }
+      .abaaba-viewport:active { cursor: grabbing; }
+      .abaaba-canvas { position: absolute; left: 50%; top: 50%; transform-origin: center; will-change: transform; }
+      .abaaba-canvas svg { display: block; width: 100%; height: 100%; }
+      .abaaba-zoom {
+        position: absolute; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 5px;
+        padding: 5px; border-radius: 9px; background: rgba(7, 11, 20, .78);
+        border: 1px solid rgba(169, 196, 214, .22); backdrop-filter: blur(8px);
+      }
+      .abaaba-zoom-btn {
+        appearance: none; border: 1px solid transparent; background: transparent;
+        color: #F7F2E8; border-radius: 6px; min-width: 26px; height: 26px; padding: 0 6px;
+        font: inherit; font-size: 12px; cursor: pointer;
+      }
+      .abaaba-zoom-btn.wide { min-width: 44px; color: #A9C4D6; }
+      .abaaba-zoom-btn:hover { background: rgba(169, 196, 214, .14); border-color: rgba(169, 196, 214, .22); }
+      .abaaba-zoom-btn:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+      .abaaba-zoom-label { min-width: 42px; text-align: center; color: #A9C4D6; font-size: 11px; }
       .abaaba-frame {
         position: relative; width: 100%; max-width: 1240px; max-height: 100%;
         aspect-ratio: var(--abaaba-aspect, 3 / 2); overflow: hidden; border-radius: 14px;
@@ -121,6 +155,13 @@ window.__ModuleLoader__.load({
         box-shadow: 0 18px 55px rgba(0, 0, 0, .28);
       }
       .abaaba-frame svg { display: block; width: 100%; height: 100%; }
+      .abaaba-panel.abaaba-full { position: fixed; inset: 0; z-index: 1000; height: 100vh; height: 100dvh; }
+      .abaaba-panel.abaaba-full .abaaba-header,
+      .abaaba-panel.abaaba-full .abaaba-footer,
+      .abaaba-panel.abaaba-full .abaaba-alert,
+      .abaaba-panel.abaaba-full .abaaba-handoffs { display: none; }
+      .abaaba-panel.abaaba-full .abaaba-stage { padding: 0; }
+      .abaaba-panel.abaaba-full .abaaba-viewport { border: 0; border-radius: 0; }
       .abaaba-empty {
         position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
         justify-content: center; gap: 8px; padding: 24px; text-align: center; pointer-events: none;
@@ -307,28 +348,150 @@ window.__ModuleLoader__.load({
       return null;
     }
 
-    function Canvas({ state, t }) {
+    const CanvasSvg = React.memo(function CanvasSvg({ state, t }) {
       const gradients = state.elements.filter((element) => element.type === 'gradient');
       const shapes = state.elements.filter((element) => element.type !== 'gradient');
-      return h('div', {
-        className: 'abaaba-frame',
-        style: { '--abaaba-aspect': `${state.width} / ${state.height}` },
+      return h('svg', {
+        viewBox: `0 0 ${state.width} ${state.height}`,
+        preserveAspectRatio: 'xMidYMid meet',
+        role: 'img',
+        'aria-label': t('panel.ariaCanvas'),
       },
-        h('svg', {
-          viewBox: `0 0 ${state.width} ${state.height}`,
-          preserveAspectRatio: 'xMidYMid meet',
-          role: 'img',
-          'aria-label': t('panel.ariaCanvas'),
+        h('title', null, state.title),
+        gradients.length > 0 ? h('defs', null, gradients.map(renderGradient)) : null,
+        h('rect', { x: 0, y: 0, width: state.width, height: state.height, fill: state.background }),
+        shapes.map(renderElement),
+      );
+    });
+
+    function CanvasStage({ state, t, fullscreen, setFullscreen }) {
+      const viewportRef = useRef(null);
+      const dragRef = useRef(null);
+      const userAdjustedRef = useRef(false);
+      const [scale, setScale] = useState(1);
+      const [offset, setOffset] = useState({ x: 0, y: 0 });
+      const clampScale = (value) => Math.min(8, Math.max(0.1, value));
+
+      const fit = useCallback((force = false) => {
+        if (!force && userAdjustedRef.current) return;
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        const padding = fullscreen ? 0 : 36;
+        const availableWidth = Math.max(80, viewport.clientWidth - padding);
+        const availableHeight = Math.max(80, viewport.clientHeight - padding);
+        setScale(Math.min(8, Math.max(0.02, Math.min(availableWidth / state.width, availableHeight / state.height))));
+        setOffset({ x: 0, y: 0 });
+      }, [state.width, state.height, fullscreen]);
+
+      useEffect(() => {
+        userAdjustedRef.current = false;
+        fit(true);
+      }, [state.width, state.height]);
+
+      useEffect(() => {
+        fit();
+        const viewport = viewportRef.current;
+        if (!viewport || typeof ResizeObserver === 'undefined') return undefined;
+        const observer = new ResizeObserver(() => fit());
+        observer.observe(viewport);
+        return () => observer.disconnect();
+      }, [fit]);
+
+      useEffect(() => {
+        fit();
+      }, [fullscreen]);
+
+      useEffect(() => {
+        if (!fullscreen) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = previousOverflow; };
+      }, [fullscreen]);
+
+      useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return undefined;
+        const onWheel = (event) => {
+          if (!(event.ctrlKey || event.metaKey)) return;
+          if (event.deltaY === 0) return;
+          event.preventDefault();
+          userAdjustedRef.current = true;
+          setScale((value) => clampScale(value * (event.deltaY < 0 ? 1.12 : 0.89)));
+        };
+        viewport.addEventListener('wheel', onWheel, { passive: false });
+        return () => viewport.removeEventListener('wheel', onWheel);
+      }, []);
+
+      useEffect(() => {
+        if (!fullscreen) return undefined;
+        const onKey = (event) => {
+          if (event.key === 'Escape' && !event.defaultPrevented) setFullscreen(false);
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+      }, [fullscreen, setFullscreen]);
+
+      const zoomBy = (factor) => {
+        userAdjustedRef.current = true;
+        setScale((value) => clampScale(value * factor));
+      };
+
+      return h('div', {
+        className: 'abaaba-viewport',
+        ref: viewportRef,
+        role: 'region',
+        'aria-label': t('panel.ariaCanvas'),
+        onPointerDown: (event) => {
+          if (event.button !== 0 || !event.isPrimary || dragRef.current) return;
+          userAdjustedRef.current = true;
+          dragRef.current = {
+            id: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            ox: offset.x,
+            oy: offset.y,
+          };
+          try {
+            if (event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            dragRef.current = null;
+          }
         },
-          h('title', null, state.title),
-          gradients.length > 0 ? h('defs', null, gradients.map(renderGradient)) : null,
-          h('rect', { x: 0, y: 0, width: state.width, height: state.height, fill: state.background }),
-          shapes.map(renderElement),
-        ),
+        onPointerMove: (event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.id !== event.pointerId || (event.buttons & 1) === 0) return;
+          setOffset({ x: drag.ox + event.clientX - drag.x, y: drag.oy + event.clientY - drag.y });
+        },
+        onPointerUp: (event) => {
+          if (dragRef.current && dragRef.current.id === event.pointerId) dragRef.current = null;
+        },
+        onPointerCancel: () => {
+          dragRef.current = null;
+        },
+        onLostPointerCapture: () => {
+          dragRef.current = null;
+        },
+      },
+        h('div', {
+          className: 'abaaba-canvas',
+          style: {
+            width: Math.max(1, Math.round(state.width * scale)),
+            height: Math.max(1, Math.round(state.height * scale)),
+            transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`,
+          },
+        }, h(CanvasSvg, { state, t })),
         state.count === 0 ? h('div', { className: 'abaaba-empty' },
           h('strong', null, t('panel.empty')),
           h('span', null, t('panel.emptyHint')),
         ) : null,
+        h('div', { className: 'abaaba-zoom', role: 'group', 'aria-label': t('panel.ariaToolbar'), onPointerDown: (event) => event.stopPropagation() },
+          h('button', { type: 'button', className: 'abaaba-zoom-btn', onClick: () => zoomBy(0.9), title: t('panel.zoomOut'), 'aria-label': t('panel.zoomOut') }, '−'),
+          h('span', { className: 'abaaba-zoom-label', 'aria-live': 'polite' }, `${Math.round(scale * 100)}%`),
+          h('button', { type: 'button', className: 'abaaba-zoom-btn', onClick: () => zoomBy(1.12), title: t('panel.zoomIn'), 'aria-label': t('panel.zoomIn') }, '+'),
+          h('button', { type: 'button', className: 'abaaba-zoom-btn wide', onClick: () => { userAdjustedRef.current = false; fit(true); }, title: t('panel.fit'), 'aria-label': t('panel.fit') }, t('panel.fit')),
+          h('button', { type: 'button', className: 'abaaba-zoom-btn wide', onClick: () => { userAdjustedRef.current = true; setScale(1); setOffset({ x: 0, y: 0 }); }, title: t('panel.zoom100'), 'aria-label': t('panel.zoom100') }, '100%'),
+          h('button', { type: 'button', className: 'abaaba-zoom-btn wide', onClick: () => setFullscreen(!fullscreen), title: fullscreen ? t('panel.exitFull') : t('panel.full'), 'aria-label': fullscreen ? t('panel.exitFull') : t('panel.full'), 'aria-pressed': fullscreen }, fullscreen ? t('panel.exitFull') : t('panel.full')),
+        ),
       );
     }
 
@@ -338,8 +501,8 @@ window.__ModuleLoader__.load({
     }
 
     function PaintPanelBound({ useSessions, ...props }) {
-      const snapshot = useSessions((value) => value);
-      return h(PaintPanel, { ...props, sessionId: snapshot?.current ?? null });
+      const currentSessionId = useSessions((value) => value?.current ?? null);
+      return h(PaintPanel, { ...props, sessionId: currentSessionId ?? null });
     }
 
     function PaintPanel({ ctx, sessionId }) {
@@ -351,19 +514,23 @@ window.__ModuleLoader__.load({
       const [showHandoffs, setShowHandoffs] = useState(false);
       const [handoffs, setHandoffs] = useState(null);
       const [handoffError, setHandoffError] = useState('');
+      const [fullscreen, setFullscreen] = useState(false);
       const etagRef = useRef(null);
       const requestSeqRef = useRef(0);
+      const sessionIdRef = useRef(sessionId);
+      sessionIdRef.current = sessionId;
 
       const load = useCallback(async () => {
         if (!sessionId) return;
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const targetSession = sessionId;
         const seq = ++requestSeqRef.current;
         try {
-          const response = await fetch(`api/abaaba-paint/state?sessionId=${encodeURIComponent(sessionId)}`, {
+          const response = await fetch(`api/abaaba-paint/state?sessionId=${encodeURIComponent(targetSession)}`, {
             cache: 'no-store',
             headers: etagRef.current ? { 'if-none-match': etagRef.current } : undefined,
           });
-          if (seq !== requestSeqRef.current) return;
+          if (seq !== requestSeqRef.current || sessionIdRef.current !== targetSession) return;
           if (response.status === 304) {
             setOnline(true);
             setError('');
@@ -371,7 +538,7 @@ window.__ModuleLoader__.load({
           }
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
-          if (seq !== requestSeqRef.current) return;
+          if (seq !== requestSeqRef.current || sessionIdRef.current !== targetSession) return;
           if (!data || data.ok !== true || !data.value) throw new Error('invalid state');
           const nextEtag = response.headers.get('etag');
           if (nextEtag) etagRef.current = nextEtag;
@@ -379,7 +546,7 @@ window.__ModuleLoader__.load({
           setOnline(true);
           setError('');
         } catch (loadError) {
-          if (seq !== requestSeqRef.current) return;
+          if (seq !== requestSeqRef.current || sessionIdRef.current !== targetSession) return;
           setOnline(false);
           setError(t('panel.error', { message: loadError instanceof Error ? loadError.message : String(loadError) }));
         }
@@ -393,6 +560,8 @@ window.__ModuleLoader__.load({
         setShowHandoffs(false);
         setHandoffs(null);
         setHandoffError('');
+        setFullscreen(false);
+        setBusy(false);
       }, [sessionId]);
 
       useEffect(() => {
@@ -411,6 +580,7 @@ window.__ModuleLoader__.load({
 
       const runAction = useCallback(async (action, extra = {}) => {
         if (!state || busy) return;
+        const targetSession = sessionId;
         setBusy(true);
         setError('');
         try {
@@ -420,9 +590,10 @@ window.__ModuleLoader__.load({
               'content-type': 'application/json',
               'x-abaaba-paint': '1',
             },
-            body: JSON.stringify({ action, revision: state.revision, sessionId, ...extra }),
+            body: JSON.stringify({ action, revision: state.revision, sessionId: targetSession, ...extra }),
           });
           const data = await response.json().catch(() => null);
+          if (sessionIdRef.current !== targetSession) return;
           if (response.status === 409 || (data && data.code === 'PAINT_STALE')) {
             setError(t('panel.stale'));
             await load();
@@ -433,6 +604,7 @@ window.__ModuleLoader__.load({
           }
           await load();
         } catch (actionError) {
+          if (sessionIdRef.current !== targetSession) return;
           setError(t('panel.error', { message: actionError instanceof Error ? actionError.message : String(actionError) }));
         } finally {
           setBusy(false);
@@ -461,13 +633,16 @@ window.__ModuleLoader__.load({
 
       const loadHandoffs = useCallback(async () => {
         if (!sessionId) return;
+        const targetSession = sessionId;
         setHandoffError('');
         try {
-          const response = await fetch(`api/abaaba-paint/handoffs?sessionId=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
+          const response = await fetch(`api/abaaba-paint/handoffs?sessionId=${encodeURIComponent(targetSession)}`, { cache: 'no-store' });
           const data = await response.json().catch(() => null);
+          if (sessionIdRef.current !== targetSession) return;
           if (!response.ok || !data || data.ok !== true) throw new Error((data && data.message) || `HTTP ${response.status}`);
           setHandoffs(Array.isArray(data.artifacts) ? data.artifacts : []);
         } catch (handoffLoadError) {
+          if (sessionIdRef.current !== targetSession) return;
           setHandoffError(t('panel.handoffFailed', { message: handoffLoadError instanceof Error ? handoffLoadError.message : String(handoffLoadError) }));
         }
       }, [sessionId, t]);
@@ -483,14 +658,14 @@ window.__ModuleLoader__.load({
       }, [runAction, t]);
 
       if (!sessionId) {
-        return h('div', { className: 'abaaba-panel' },
+        return h('div', { className: `abaaba-panel${fullscreen ? ' abaaba-full' : ''}` },
           h('style', null, CSS),
           h('div', { className: 'abaaba-stage' }, h('span', { className: 'abaaba-subtitle' }, t('panel.noSession'))),
         );
       }
 
       if (!state) {
-        return h('div', { className: 'abaaba-panel' },
+        return h('div', { className: `abaaba-panel${fullscreen ? ' abaaba-full' : ''}` },
           h('style', null, CSS),
           h('div', { className: 'abaaba-stage' }, h('span', { className: 'abaaba-subtitle' }, t('panel.loading'))),
         );
@@ -505,7 +680,7 @@ window.__ModuleLoader__.load({
           : state.persisted
             ? t('panel.saved', { time: saveTime })
             : t('panel.savedAt', { time: saveTime });
-      return h('div', { className: 'abaaba-panel' },
+      return h('div', { className: `abaaba-panel${fullscreen ? ' abaaba-full' : ''}` },
         h('style', null, CSS),
         h('header', { className: 'abaaba-header' },
           h('div', { className: 'abaaba-heading' },
@@ -551,7 +726,7 @@ window.__ModuleLoader__.load({
           ) : null,
         ) : null,
         error ? h('div', { className: 'abaaba-alert', role: 'alert' }, error) : null,
-        h('div', { className: 'abaaba-stage' }, h(Canvas, { state, t })),
+        h('div', { className: 'abaaba-stage' }, h(CanvasStage, { state, t, fullscreen, setFullscreen })),
         h('footer', { className: 'abaaba-footer' },
           h('span', null, busy ? t('panel.busy') : `${t('panel.revision', { revision: state.revision })} · ${t('panel.elements', { count: state.count })}`),
           h('span', { className: state.saveError ? 'abaaba-save-error' : 'abaaba-persistence', title: state.workspace || undefined }, persistence),
