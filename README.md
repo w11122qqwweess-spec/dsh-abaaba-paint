@@ -114,7 +114,7 @@ npm run verify
 包含：
 
 - JavaScript 语法检查
-- 26 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、导出
+- 27 个单元/集成测试：引擎、SVG 转义、路径穿越、路由鉴权、revision 冲突、字节预算、ETag、自动保存/重载、导出
 - 本地 secret/path 扫描
 
 CI 在 `.github/workflows/ci.yml`，使用固定 commit 的 `actions/checkout` 和 `actions/setup-node`。

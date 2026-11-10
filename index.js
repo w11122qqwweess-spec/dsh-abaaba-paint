@@ -338,7 +338,7 @@ function registerTools(ctx, store) {
       await ensureWorkspace(ctx, store, exec, { load: true });
       return store.summary();
     },
-    { mutating: false, timeoutMs: 5000 },
+    { mutating: true, timeoutMs: 5000 },
   ));
 
   add(tool(

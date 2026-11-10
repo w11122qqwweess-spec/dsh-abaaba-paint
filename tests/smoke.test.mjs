@@ -262,6 +262,31 @@ test('rejects a corrupted workspace snapshot before mutating', async () => {
   );
 });
 
+test('switching workspaces does not leak one canvas into another', async () => {
+  const rootA = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-ws-a-'));
+  const rootB = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-ws-b-'));
+  const { ctx } = makeContext(rootA);
+  const store = new PaintStore();
+  const exec = { agent: { session: {} } };
+  await ensureWorkspace(ctx, store, exec, { reset: true });
+  store.create({ width: 320, height: 200, title: 'A' });
+  store.draw([{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }]);
+  await saveWorkspace(ctx, store);
+  assert.equal(store.snapshot().count, 1);
+
+  ctx.workingDirectory.get = () => rootB;
+  await ensureWorkspace(ctx, store, exec, { load: true });
+  assert.equal(store.snapshot().count, 0, 'B must start empty instead of inheriting A');
+  store.create({ width: 320, height: 200, title: 'B' });
+  store.draw([{ type: 'rect', x: 1, y: 1, w: 10, h: 10, fill: '#fff' }]);
+  await saveWorkspace(ctx, store);
+
+  ctx.workingDirectory.get = () => rootA;
+  await ensureWorkspace(ctx, store, exec, { load: true });
+  assert.equal(store.snapshot().title, 'A');
+  assert.equal(store.snapshot().count, 1);
+});
+
 test('HTTP save and reload operate on the same workspace snapshot', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-http-persist-'));
   const { ctx } = makeContext(root);
@@ -304,10 +329,10 @@ test('rejects traversal, absolute paths, reserved names, and symlinked exports',
   }
 });
 
-test('mutating tools are exclusive and the state tool is parallel-safe', async () => {
+test('mutating tools and state loading are exclusive', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-smoke-'));
   const { tools } = makeContext(root);
   assert.equal(tools.get('paint_draw').isConcurrencySafe(), false);
   assert.equal(tools.get('paint_create').isConcurrencySafe(), false);
-  assert.equal(tools.get('paint_state').isConcurrencySafe(), true);
+  assert.equal(tools.get('paint_state').isConcurrencySafe(), false);
 });
