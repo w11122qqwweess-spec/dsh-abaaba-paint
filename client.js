@@ -15,7 +15,14 @@ window.__ModuleLoader__.load({
         'panel.emptyHint': '让 Agent 调用 paint_create 和 paint_draw 落下第一笔。',
         'panel.undo': '撤销',
         'panel.clear': '清空',
+        'panel.confirmClear': '清空整张画布？会立即覆盖工作区快照；只能在本进程内撤销。',
         'panel.save': '保存 SVG',
+        'panel.saveWorkspace': '保存到工作区',
+        'panel.reload': '重载',
+        'panel.saved': '已自动保存 · {time}',
+        'panel.savedAt': '已保存到工作区 · {time}',
+        'panel.saveFailed': '保存失败：{message}',
+        'panel.unbound': '首次落笔后绑定工作区',
         'panel.refresh': '刷新',
         'panel.revision': '第 {revision} 版',
         'panel.elements': '{count} 个图元',
@@ -23,7 +30,6 @@ window.__ModuleLoader__.load({
         'panel.busy': '处理中…',
         'panel.error': '画室连接失败：{message}',
         'panel.stale': '画布已被另一处更新，已刷新，请重试。',
-        'panel.saved': 'SVG 已开始下载。',
         'panel.ariaCanvas': 'Abaaba 画布',
         'panel.ariaToolbar': '画布操作',
         'status.live': '实时同步',
@@ -37,7 +43,14 @@ window.__ModuleLoader__.load({
         'panel.emptyHint': 'Ask the Agent to call paint_create and paint_draw.',
         'panel.undo': 'Undo',
         'panel.clear': 'Clear',
+        'panel.confirmClear': 'Clear the whole canvas? This immediately overwrites the workspace snapshot and is only undoable in this process.',
         'panel.save': 'Save SVG',
+        'panel.saveWorkspace': 'Save to workspace',
+        'panel.reload': 'Reload',
+        'panel.saved': 'Auto-saved · {time}',
+        'panel.savedAt': 'Saved to workspace · {time}',
+        'panel.saveFailed': 'Save failed: {message}',
+        'panel.unbound': 'Workspace binds on first stroke',
         'panel.refresh': 'Refresh',
         'panel.revision': 'Revision {revision}',
         'panel.elements': '{count} elements',
@@ -45,7 +58,6 @@ window.__ModuleLoader__.load({
         'panel.busy': 'Working…',
         'panel.error': 'Paint connection failed: {message}',
         'panel.stale': 'The canvas changed elsewhere. Refreshed; please retry.',
-        'panel.saved': 'SVG download started.',
         'panel.ariaCanvas': 'Abaaba canvas',
         'panel.ariaToolbar': 'Canvas actions',
         'status.live': 'Live',
@@ -100,6 +112,8 @@ window.__ModuleLoader__.load({
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
         padding: 0 26px 16px; color: var(--dsw-alias-label-secondary); font-size: 11px;
       }
+      .abaaba-persistence { color: var(--dsw-alias-state-success-primary); }
+      .abaaba-save-error { color: var(--dsw-alias-state-error-primary); }
       .abaaba-alert {
         margin: 0 26px 10px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
         color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-bg-layer-1);
@@ -373,6 +387,14 @@ window.__ModuleLoader__.load({
       }
 
       const updated = state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString() : '—';
+      const saveTime = state.savedAt ? new Date(state.savedAt).toLocaleTimeString() : '—';
+      const persistence = !state.workspace
+        ? t('panel.unbound')
+        : state.saveError
+          ? t('panel.saveFailed', { message: state.saveError })
+          : state.persisted
+            ? t('panel.saved', { time: saveTime })
+            : t('panel.savedAt', { time: saveTime });
       return h('div', { className: 'abaaba-panel' },
         h('style', null, CSS),
         h('header', { className: 'abaaba-header' },
@@ -387,7 +409,9 @@ window.__ModuleLoader__.load({
             ),
             h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void load(), disabled: busy }, t('panel.refresh')),
             h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void runAction('undo'), disabled: busy }, t('panel.undo')),
-            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void runAction('clear'), disabled: busy || state.count === 0 }, t('panel.clear')),
+            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => { if (window.confirm(t('panel.confirmClear'))) void runAction('clear'); }, disabled: busy || state.count === 0 }, t('panel.clear')),
+            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void runAction('save'), disabled: busy || !state.workspace }, t('panel.saveWorkspace')),
+            h('button', { type: 'button', className: 'abaaba-btn', onClick: () => void runAction('reload'), disabled: busy || !state.workspace }, t('panel.reload')),
             h('button', { type: 'button', className: 'abaaba-btn primary', onClick: () => void saveSvg(), disabled: busy }, t('panel.save')),
           ),
         ),
@@ -395,6 +419,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'abaaba-stage' }, h(Canvas, { state, t })),
         h('footer', { className: 'abaaba-footer' },
           h('span', null, busy ? t('panel.busy') : `${t('panel.revision', { revision: state.revision })} · ${t('panel.elements', { count: state.count })}`),
+          h('span', { className: state.saveError ? 'abaaba-save-error' : 'abaaba-persistence', title: state.workspace || undefined }, persistence),
           h('span', null, t('panel.updated', { time: updated })),
         ),
       );

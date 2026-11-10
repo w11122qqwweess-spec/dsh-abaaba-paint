@@ -138,6 +138,29 @@ test('enforces serialized state and history byte budgets', () => {
   assert.ok(historyStore.historyBytes <= 300, `historyBytes=${historyStore.historyBytes}`);
 });
 
+test('reloads a persisted canvas with more than one draw batch', () => {
+  const store = new PaintStore();
+  store.create({});
+  const rect = { type: 'rect', x: 0, y: 0, w: 1, h: 1, fill: '#fff' };
+  store.draw(Array.from({ length: 256 }, () => rect));
+  store.draw(Array.from({ length: 44 }, () => rect));
+  assert.equal(store.snapshot().count, 300);
+  const serialized = store.serialize();
+  const restored = new PaintStore();
+  restored.loadSerialized(serialized);
+  assert.equal(restored.snapshot().count, 300);
+  assert.equal(restored.snapshot().revision, store.revision);
+});
+
+test('invalidates the ETag when a snapshot is reloaded in-process', () => {
+  const store = new PaintStore();
+  store.create({});
+  store.draw([{ type: 'rect', x: 0, y: 0, w: 1, h: 1, fill: '#fff' }]);
+  const before = store.etag;
+  store.loadSerialized(store.serialize());
+  assert.notEqual(store.etag, before);
+});
+
 test('normalizes points and text deterministically', () => {
   const elements = normalizeElements([
     { type: 'polygon', points: '0,0 10,0 10,10', fill: '#fff' },

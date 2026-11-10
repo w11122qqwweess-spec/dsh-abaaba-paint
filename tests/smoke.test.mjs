@@ -5,6 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { apply } from '../index.js';
+import { PaintStore } from '../lib/engine.js';
+import { ensureWorkspace, saveWorkspace } from '../lib/workspace.js';
+import { createActionHandler } from '../lib/http.js';
 
 function makeContext(root) {
   const tools = new Map();
@@ -66,6 +69,9 @@ function makeContext(root) {
           return undefined;
         }
       },
+      async readText(target) {
+        return fs.readFile(target.targetKey, 'utf8');
+      },
       async writeText(target, content, intent, _signal, policy) {
         policyRef.value = policy ?? null;
         if (intent.kind === 'createIfAbsent') {
@@ -104,7 +110,7 @@ function assertNoBooleanRequired(value, at = 'schema') {
   for (const [key, child] of Object.entries(value)) assertNoBooleanRequired(child, `${at}.${key}`);
 }
 
-test('registers six tools and three authenticated routes', async () => {
+test('registers eight tools and three authenticated routes', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-smoke-'));
   const { tools, routes } = makeContext(root);
   assert.deepEqual([...tools.keys()].sort(), [
@@ -112,6 +118,8 @@ test('registers six tools and three authenticated routes', async () => {
     'paint_create',
     'paint_draw',
     'paint_export',
+    'paint_load',
+    'paint_save',
     'paint_state',
     'paint_undo',
   ]);
@@ -181,6 +189,110 @@ test('creates, draws, inspects, undoes, and exports a real SVG', async () => {
   const undone = await tools.get('paint_undo').execute({ steps: 1 }, exec);
   assert.equal(undone.undone, 1);
   assert.ok(undone.revision > beforeUndo);
+});
+
+test('requires replace:true before overwriting an existing workspace canvas', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-replace-'));
+  const { tools } = makeContext(root);
+  const exec = { agent: { session: {} } };
+  await tools.get('paint_create').execute({ width: 320, height: 200, title: 'first' }, exec);
+  await assert.rejects(
+    () => tools.get('paint_create').execute({ width: 320, height: 200, title: 'second' }, exec),
+    /replace:true/,
+  );
+  const replaced = await tools.get('paint_create').execute({ width: 320, height: 200, title: 'second', replace: true }, exec);
+  assert.equal(replaced.ok, true);
+  assert.equal(replaced.title, 'second');
+});
+
+test('auto-saves and reloads the canvas from the workspace', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-persist-'));
+  const { tools } = makeContext(root);
+  const exec = { agent: { session: {} } };
+  await tools.get('paint_create').execute({ width: 320, height: 200, title: 'persisted' }, exec);
+  await tools.get('paint_draw').execute({
+    elements: [{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }],
+  }, exec);
+
+  const stateFile = path.join(root, 'abaaba-paint.json');
+  const svgFile = path.join(root, 'abaaba-paint.svg');
+  assert.ok((await fs.stat(stateFile)).size > 0);
+  assert.ok((await fs.stat(svgFile)).size > 0);
+  const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+  assert.equal(state.format, 'dsh-abaaba-paint');
+  assert.equal(state.version, 1);
+  assert.equal(state.elements.length, 1);
+  assert.equal(state.title, 'persisted');
+
+  const saved = await tools.get('paint_save').execute({}, exec);
+  assert.equal(saved.saved, true);
+  assert.equal(saved.workspace, root);
+
+  const restarted = makeContext(root);
+  const loaded = await restarted.tools.get('paint_load').execute({}, exec);
+  assert.equal(loaded.ok, true);
+  assert.equal(loaded.loaded, true);
+  assert.equal(loaded.count, 1);
+  const summary = await restarted.tools.get('paint_state').execute({}, exec);
+  assert.equal(summary.title, 'persisted');
+  assert.equal(summary.count, 1);
+  assert.equal(summary.persisted, true);
+});
+
+test('rejects an oversized workspace snapshot before reading it', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-huge-'));
+  await fs.writeFile(path.join(root, 'abaaba-paint.json'), Buffer.alloc(4 * 1024 * 1024, 'a'));
+  const { tools } = makeContext(root);
+  const exec = { agent: { session: {} } };
+  await assert.rejects(() => tools.get('paint_load').execute({}, exec), /too large/);
+});
+
+test('rejects a corrupted workspace snapshot before mutating', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-corrupt-'));
+  await fs.writeFile(path.join(root, 'abaaba-paint.json'), '{"format":"wrong"}', 'utf8');
+  const { tools } = makeContext(root);
+  const exec = { agent: { session: {} } };
+  await assert.rejects(
+    () => tools.get('paint_load').execute({}, exec),
+    /unsupported format|invalid|format/i,
+  );
+  await assert.rejects(
+    () => tools.get('paint_draw').execute({ elements: [{ type: 'rect', x: 0, y: 0, w: 1, h: 1, fill: '#fff' }] }, exec),
+    /unsupported format|invalid|format/i,
+  );
+});
+
+test('HTTP save and reload operate on the same workspace snapshot', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'abaaba-http-persist-'));
+  const { ctx } = makeContext(root);
+  const store = new PaintStore();
+  const exec = { agent: { session: {} } };
+  await ensureWorkspace(ctx, store, exec, { reset: true });
+  store.create({ width: 320, height: 200, title: 'http persisted' });
+  store.draw([{ type: 'rect', x: 0, y: 0, w: 20, h: 20, fill: '#F2C879' }]);
+  assert.equal((await saveWorkspace(ctx, store)).saved, true);
+
+  const handler = createActionHandler(store, ctx);
+  const headers = {
+    'content-type': 'application/json',
+    'x-abaaba-paint': '1',
+    origin: 'http://127.0.0.1:50833',
+  };
+  const request = (body) => new Request('http://127.0.0.1:50833/api/abaaba-paint/action', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  const saved = await handler(request({ action: 'save', revision: store.revision }));
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).saved, true);
+
+  store.draw([{ type: 'rect', x: 10, y: 10, w: 20, h: 20, fill: '#fff' }]);
+  const reloaded = await handler(request({ action: 'reload', revision: store.revision }));
+  assert.equal(reloaded.status, 200);
+  const body = await reloaded.json();
+  assert.equal(body.loaded, true);
+  assert.equal(body.value.count, 1);
 });
 
 test('rejects traversal, absolute paths, reserved names, and symlinked exports', async () => {

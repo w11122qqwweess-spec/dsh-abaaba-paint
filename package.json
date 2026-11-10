@@ -1,8 +1,8 @@
 {
   "name": "dsh-abaaba-paint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "A live vector paint studio for DSH agents: six model-facing tools, an authenticated canvas panel, SVG export, and a strict no-dependency drawing engine.",
+  "description": "A live vector paint studio for DSH agents: eight model-facing tools, workspace auto-save/restore, an authenticated canvas panel, and SVG export with zero runtime dependencies.",
   "type": "module",
   "main": "index.js",
   "icon": "icon.svg",

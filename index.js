@@ -1,14 +1,16 @@
 /**
  * Host half of dsh-abaaba-paint.
  *
- * Registers six agent tools over one in-memory vector canvas and exposes the
- * canvas to the authenticated Web panel through ctx.connection.fetch.
+ * Registers eight agent tools over one vector canvas, persists the source and
+ * rendered SVG into the Session workspace, and exposes the canvas to the
+ * authenticated Web panel through ctx.connection.fetch.
  * There are no runtime dependencies, no lifecycle scripts, and no eval.
  */
 
 import { PaintError, PaintStore } from './lib/engine.js';
 import { createActionHandler, createExportHandler, createStateHandler } from './lib/http.js';
 import { exportSvg } from './lib/export.js';
+import { ensureWorkspace, loadWorkspace, saveWorkspace } from './lib/workspace.js';
 
 export const name = 'dsh-abaaba-paint';
 export const inject = ['tools', 'connection', 'fs', 'workingDirectory'];
@@ -35,6 +37,12 @@ function okSchema(properties) {
         },
       },
       updatedAt: { type: 'integer' },
+      saved: { type: 'boolean' },
+      files: { type: 'array', items: { type: 'string' } },
+      savedAt: { type: 'integer' },
+      saveError: { type: 'string' },
+      workspace: { type: 'string' },
+      persisted: { type: 'boolean' },
       ...properties,
     },
   };
@@ -152,7 +160,14 @@ function tool(name, description, parameters, outputSchema, execute, { mutating =
       render: (_args, value) => {
         const safe = value && typeof value === 'object' ? value : {};
         if (name === 'paint_state') {
-          return renderText(safe, `Canvas ${safe.width ?? '?'}x${safe.height ?? '?'}, ${safe.count ?? '?'} elements, revision ${safe.revision ?? '?'}.`);
+          const where = safe.workspace
+            ? safe.saveError
+              ? `, save error: ${safe.saveError}`
+              : safe.persisted
+                ? `, saved to ${safe.workspace}`
+                : `, workspace ${safe.workspace}`
+            : ', unbound';
+          return renderText(safe, `Canvas ${safe.width ?? '?'}x${safe.height ?? '?'}, ${safe.count ?? '?'} elements, revision ${safe.revision ?? '?'}${where}.`);
         }
         if (name === 'paint_export') {
           return renderText(safe, `Exported ${safe.bytes ?? '?'} bytes to ${safe.path ?? '?'} (revision ${safe.revision ?? '?'}).`);
@@ -178,6 +193,25 @@ function tool(name, description, parameters, outputSchema, execute, { mutating =
   };
 }
 
+async function commit(ctx, store, result) {
+  let save;
+  try {
+    save = await saveWorkspace(ctx, store);
+  } catch (error) {
+    store.markSaveError(error instanceof Error ? error.message : 'workspace save failed');
+    save = { saved: false };
+  }
+  return {
+    ok: true,
+    ...result,
+    saved: save.saved,
+    savedAt: store.savedAt,
+    saveError: store.saveError,
+    workspace: store.workspace?.cwd ?? '',
+    persisted: Boolean(store.workspace && store.savedAt),
+  };
+}
+
 function registerTools(ctx, store) {
   const disposers = [];
   const add = (definition) => disposers.push(ctx.tools.register(definition));
@@ -190,6 +224,7 @@ function registerTools(ctx, store) {
       height: { type: 'integer', description: 'canvas height 64-4096' },
       background: { type: 'string', description: 'hex background color' },
       title: { type: 'string', description: 'short artwork title, at most 80 characters' },
+      replace: { type: 'boolean', description: 'replace an existing workspace canvas (default false)' },
     },
     okSchema({
       width: { type: 'integer', required: true },
@@ -198,7 +233,10 @@ function registerTools(ctx, store) {
       count: { type: 'integer', required: true },
       revision: { type: 'integer', required: true },
     }),
-    async (args) => ({ ok: true, ...store.create(args) }),
+    async (args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: false, reset: true, replace: Boolean(args.replace) });
+      return commit(ctx, store, store.create(args));
+    },
     { timeoutMs: 5000 },
   ));
 
@@ -222,7 +260,10 @@ function registerTools(ctx, store) {
       count: { type: 'integer', required: true },
       revision: { type: 'integer', required: true },
     }),
-    async (args) => ({ ok: true, ...store.draw(args.elements) }),
+    async (args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      return commit(ctx, store, store.draw(args.elements));
+    },
     { timeoutMs: 5000 },
   ));
 
@@ -237,7 +278,10 @@ function registerTools(ctx, store) {
       count: { type: 'integer', required: true },
       revision: { type: 'integer', required: true },
     }),
-    async (args) => ({ ok: true, ...store.undo(args.steps ?? 1) }),
+    async (args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      return commit(ctx, store, store.undo(args.steps ?? 1));
+    },
     { timeoutMs: 5000 },
   ));
 
@@ -250,7 +294,10 @@ function registerTools(ctx, store) {
       count: { type: 'integer', required: true },
       revision: { type: 'integer', required: true },
     }),
-    async () => ({ ok: true, ...store.clear() }),
+    async (_args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      return commit(ctx, store, store.clear());
+    },
     { timeoutMs: 5000 },
   ));
 
@@ -281,9 +328,16 @@ function registerTools(ctx, store) {
         },
         revision: { type: 'integer', required: true },
         updatedAt: { type: 'integer', required: true },
+        workspace: { type: 'string', required: true },
+        savedAt: { type: 'integer', required: true },
+        saveError: { type: 'string', required: true },
+        persisted: { type: 'boolean', required: true },
       },
     },
-    async () => store.summary(),
+    async (_args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      return store.summary();
+    },
     { mutating: false, timeoutMs: 5000 },
   ));
 
@@ -300,8 +354,77 @@ function registerTools(ctx, store) {
       revision: { type: 'integer', required: true },
       overwritten: { type: 'boolean', required: true },
     }),
-    async (args, exec) => ({ ok: true, ...(await exportSvg(ctx, exec, store, args)) }),
+    async (args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      return { ok: true, ...(await exportSvg(ctx, exec, store, args)), workspace: store.workspace?.cwd ?? '', savedAt: store.savedAt, saveError: store.saveError, persisted: Boolean(store.workspace && store.savedAt) };
+    },
     { timeoutMs: 15000 },
+  ));
+
+  add(tool(
+    'paint_save',
+    'Save the canvas explicitly to the Session working directory. The plugin also auto-saves after every mutation; this is a diagnostic/force-save action.',
+    {},
+    okSchema({
+      saved: { type: 'boolean', required: true },
+      files: { type: 'array', required: true, items: { type: 'string' } },
+      workspace: { type: 'string', required: true },
+      savedAt: { type: 'integer', required: true },
+      saveError: { type: 'string', required: true },
+      revision: { type: 'integer', required: true },
+      count: { type: 'integer', required: true },
+    }),
+    async (_args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: true });
+      const save = await saveWorkspace(ctx, store);
+      return {
+        ok: save.saved,
+        saved: save.saved,
+        files: save.files ?? [],
+        workspace: store.workspace?.cwd ?? '',
+        savedAt: store.savedAt,
+        saveError: store.saveError,
+        revision: store.revision,
+        count: store.elements.length,
+      };
+    },
+    { timeoutMs: 15000 },
+  ));
+
+  add(tool(
+    'paint_load',
+    'Reload the canvas from abaaba-paint.json in the Session working directory. Use paint_create to start over instead of loading.',
+    {},
+    {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        ok: { type: 'boolean', required: true },
+        loaded: { type: 'boolean', required: true },
+        reason: { type: 'string' },
+        workspace: { type: 'string', required: true },
+        savedAt: { type: 'integer', required: true },
+        revision: { type: 'integer', required: true },
+        count: { type: 'integer', required: true },
+        saveError: { type: 'string', required: true },
+      },
+    },
+    async (_args, exec) => {
+      await ensureWorkspace(ctx, store, exec, { load: false });
+      store.workspace.loaded = false;
+      const loaded = await loadWorkspace(ctx, store);
+      return {
+        ok: true,
+        loaded: loaded.loaded,
+        ...(loaded.reason ? { reason: loaded.reason } : {}),
+        workspace: store.workspace?.cwd ?? '',
+        savedAt: store.savedAt,
+        revision: store.revision,
+        count: store.elements.length,
+        saveError: store.saveError,
+      };
+    },
+    { mutating: true, timeoutMs: 15000 },
   ));
 
   return () => {
@@ -321,7 +444,7 @@ function registerRoutes(ctx, store) {
       path: '/api/abaaba-paint/action',
       methods: ['POST'],
       requestBody: 'buffered',
-      fetch: createActionHandler(store),
+      fetch: createActionHandler(store, ctx),
     }),
     ctx.connection.fetch.register({
       path: '/api/abaaba-paint/export.svg',

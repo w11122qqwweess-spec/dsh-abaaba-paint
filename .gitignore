@@ -3,3 +3,5 @@ test-output/
 .probe
 *.log
 *.tmp
+abaaba-paint.json
+abaaba-paint.svg
