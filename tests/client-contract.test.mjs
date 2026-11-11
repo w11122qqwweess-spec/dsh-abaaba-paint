@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 
-test('client bundle declares the package id and both live slots', async () => {
+test('client bundle declares the package id and three live slots', async () => {
   const source = await fs.readFile(new URL('../client.js', import.meta.url), 'utf8');
   assert.match(source, /id:\s*'dsh-abaaba-paint'/);
   assert.match(source, /name:\s*'sidebar\.panellist'/);
   assert.match(source, /id:\s*'abaaba-paint'/);
   assert.match(source, /name:\s*'main'/);
   assert.match(source, /key:\s*'abaaba-paint'/);
+  assert.match(source, /name:\s*'conversation\.view'/);
+  assert.match(source, /id:\s*'abaaba-paint',\s*order:\s*40/);
   assert.doesNotMatch(source, /dangerouslySetInnerHTML|new Function|eval\(/);
 });
 

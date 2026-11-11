@@ -758,6 +758,12 @@ window.__ModuleLoader__.load({
           name: 'main',
           key: 'abaaba-paint',
         }, (props) => h(PaintPanelSession, { ...props, ctx }))));
+        ctx.effect(() => ctx.slots.inject('conversation.view', () => ctx.slots.register({
+          name: 'conversation.view',
+          id: 'abaaba-paint',
+          order: 40,
+          label: () => t('panel.title'),
+        }, (props) => h(PaintPanelSession, { ...props, ctx }))));
       },
     };
   },
