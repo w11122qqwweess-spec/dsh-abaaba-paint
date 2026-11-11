@@ -496,6 +496,9 @@ window.__ModuleLoader__.load({
     }
 
     function PaintPanelSession(props) {
+      if (typeof props.sessionId === 'string' && props.sessionId !== '') {
+        return h(PaintPanel, { ...props, sessionId: props.sessionId });
+      }
       if (typeof props.useSessions !== 'function') return h(PaintPanel, { ...props, sessionId: null });
       return h(PaintPanelBound, props);
     }
